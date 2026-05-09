@@ -1,0 +1,7 @@
+{
+  "cam_001": "rtsp://admin:password@192.168.1.101:554/cam/realmonitor?channel=1&subtype=0",
+  "cam_002": "rtsp://admin:password@192.168.1.102:554/cam/realmonitor?channel=1&subtype=0",
+  "cam_003": "rtsp://admin:password@192.168.1.103:554/cam/realmonitor?channel=1&subtype=0",
+  "cam_004": "rtsp://admin:password@192.168.1.104:554/cam/realmonitor?channel=1&subtype=0",
+  "cam_005": "rtsp://admin:password@192.168.1.105:554/cam/realmonitor?channel=1&subtype=0"
+}
