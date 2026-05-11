@@ -5,19 +5,12 @@ import os
 import sys
 import time
 import signal
-import logging
 import asyncio
 from typing import Dict
 
-# 添加项目路径
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+from core.logger import app_logger, get_logger
 
-# 配置日志
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
+logger = get_logger("services.main")
 
 
 def load_camera_config() -> dict:
@@ -26,7 +19,7 @@ def load_camera_config() -> dict:
 
     # 尝试从数据库加载
     try:
-        from backend.models.database import SessionLocal, Camera
+        from models.database import SessionLocal, Camera
         db = SessionLocal()
         cameras = db.query(Camera).filter(Camera.enabled == True).all()
         for cam in cameras:
@@ -91,7 +84,7 @@ class ServiceManager:
     def __init__(self):
         self.camera_service = None
         self.inference_service = None
-        self.alert_manager = None
+        self.alert_service = None
         self.websocket_service = None
         self._running = False
 
@@ -104,37 +97,44 @@ class ServiceManager:
         """
         logger.info("正在初始化服务...")
 
+        # 延迟导入，避免循环导入
+        from services.camera_service import camera_service
+        from services.inference_service import get_inference_service
+        from services.alert_service import get_alert_service
+        from services.websocket_service import websocket_service
+
         # 初始化摄像头服务
-        from backend.services.camera_service import CameraService
-        self.camera_service = CameraService()
+        self.camera_service = camera_service
         logger.info("摄像头服务已初始化")
 
         # 初始化推理服务
-        from backend.services.inference_service import InferenceService
-        self.inference_service = InferenceService(inference_fps=inference_fps)
+        self.inference_service = get_inference_service()
         logger.info("推理服务已初始化")
 
-        # 初始化告警管理器
-        try:
-            from backend.engine.alert_manager import AlertManager
-            self.alert_manager = AlertManager()
-            self.inference_service.set_alert_service(self.alert_manager)
-            logger.info("告警管理器已初始化")
-        except Exception as e:
-            logger.warning(f"无法初始化告警管理器: {e}")
+        # 初始化告警服务
+        self.alert_service = get_alert_service()
+        logger.info("告警服务已初始化")
 
         # 初始化WebSocket服务
-        from backend.services.websocket_service import WebSocketService
-        self.websocket_service = WebSocketService()
+        self.websocket_service = websocket_service
         logger.info("WebSocket服务已初始化")
 
-        # 连接摄像头服务和推理服务
-        self.camera_service.set_frame_callback(self._on_frame_received)
-
-        # 添加推理结果回调
-        self.inference_service.add_result_callback(self._on_detection_result)
+        # 连接服务
+        self._connect_services()
 
         logger.info("所有服务初始化完成")
+
+    def _connect_services(self):
+        """连接服务之间的回调"""
+        # 摄像头 -> 推理服务
+        self.camera_service.set_frame_callback(self._on_frame_received)
+
+        # 推理服务 -> 告警服务
+        if hasattr(self.inference_service, 'set_alert_service'):
+            self.inference_service.set_alert_service(self.alert_service)
+
+        # 注册告警回调 -> WebSocket推送
+        self.alert_service.register_callback(self._on_alert_created)
 
     def _on_frame_received(self, camera_id: str, frame):
         """帧接收回调 - 从摄像头服务到推理服务"""
@@ -143,15 +143,12 @@ class ServiceManager:
             location = self.camera_service._cameras[camera_id].location
         self.inference_service.submit_frame(camera_id, frame, location)
 
-    def _on_detection_result(self, camera_id: str, detections: list, frame):
-        """检测结果回调 - 推送到WebSocket"""
+    async def _on_alert_created(self, alert_data: dict):
+        """告警创建回调 - 推送到WebSocket"""
         try:
-            # 异步推送检测结果
-            asyncio.create_task(
-                self.websocket_service.broadcast_detection(camera_id, detections)
-            )
+            await self.websocket_service.broadcast_alert(alert_data)
         except Exception as e:
-            logger.debug(f"WebSocket推送失败: {e}")
+            logger.error(f"WebSocket告警推送失败: {e}")
 
     def load_cameras(self, camera_config: dict):
         """加载摄像头配置"""
@@ -196,12 +193,21 @@ class ServiceManager:
 
         logger.info("所有服务已停止")
 
+    def restart(self):
+        """重启所有服务"""
+        logger.info("重启服务...")
+        self.stop()
+        time.sleep(1)
+        self.start()
+        logger.info("服务重启完成")
+
     def get_status(self) -> Dict:
         """获取所有服务状态"""
         status = {
             "running": self._running,
             "camera_service": self.camera_service.get_all_status() if self.camera_service else None,
             "inference_service": self.inference_service.get_status() if self.inference_service else None,
+            "alert_service": self.alert_service.get_recent_alerts(limit=1) if self.alert_service else None,
             "websocket_service": self.websocket_service.get_connection_count() if self.websocket_service else None
         }
         return status
@@ -211,13 +217,27 @@ class ServiceManager:
 service_manager = ServiceManager()
 
 
+def get_service_manager() -> ServiceManager:
+    """获取服务管理器实例"""
+    return service_manager
+
+
 def main():
     """主函数"""
+    import argparse
+
+    parser = argparse.ArgumentParser(description='后厨智能监测系统服务')
+    parser.add_argument('--service', choices=['camera', 'inference', 'all'],
+                       default='all', help='要启动的服务')
+    parser.add_argument('--fps', type=float, default=3.0, help='推理帧率')
+
+    args = parser.parse_args()
+
     # 加载摄像头配置
     camera_config = load_camera_config()
 
     # 初始化服务
-    service_manager.initialize(inference_fps=3.0)
+    service_manager.initialize(inference_fps=args.fps)
 
     # 加载摄像头
     service_manager.load_cameras(camera_config)
@@ -232,15 +252,20 @@ def main():
     signal.signal(signal.SIGTERM, signal_handler)
 
     # 启动服务
-    service_manager.start()
+    if args.service == 'all':
+        service_manager.start()
+    elif args.service == 'camera':
+        service_manager.camera_service.start()
+    elif args.service == 'inference':
+        service_manager.inference_service.start()
 
     logger.info("=" * 50)
     logger.info("厨房AI系统服务层已启动")
     logger.info("=" * 50)
     logger.info("服务架构:")
-    logger.info("  ├── camera_service   (摄像头服务)")
+    logger.info("  ├── camera_service    (摄像头服务)")
     logger.info("  ├── inference_service (推理服务)")
-    logger.info("  ├── alert_service    (告警服务)")
+    logger.info("  ├── alert_service     (告警服务)")
     logger.info("  └── websocket_service (WebSocket服务)")
     logger.info("=" * 50)
     logger.info("按 Ctrl+C 停止服务...")
@@ -252,7 +277,7 @@ def main():
             # 定期打印状态
             status = service_manager.get_status()
             if status["camera_service"]:
-                cameras = status["camera_service"]["cameras"]
+                cameras = status["camera_service"].get("cameras", {})
                 online_count = sum(1 for c in cameras.values() if c and c.get("is_online"))
                 logger.debug(f"摄像头状态: {online_count}/{len(cameras)} 在线")
     except KeyboardInterrupt:

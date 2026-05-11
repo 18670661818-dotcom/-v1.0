@@ -492,3 +492,142 @@ class CameraService:
 
 # 全局摄像头服务实例
 camera_service = CameraService()
+
+
+def load_camera_config() -> dict:
+    """从数据库或配置文件加载摄像头配置"""
+    import json
+    config = {}
+
+    # 尝试从数据库加载
+    try:
+        from models.database import SessionLocal, Camera
+        db = SessionLocal()
+        cameras = db.query(Camera).filter(Camera.enabled == True).all()
+        for cam in cameras:
+            config[cam.camera_id] = {
+                "rtsp_url": cam.rtsp_url,
+                "location": cam.location or cam.name,
+                "enabled": cam.enabled
+            }
+        db.close()
+        logger.info(f"从数据库加载了 {len(config)} 个摄像头")
+    except Exception as e:
+        logger.warning(f"无法从数据库加载摄像头: {e}")
+
+    # 如果数据库没有配置，尝试从JSON文件加载
+    if not config:
+        try:
+            config_path = os.path.join(
+                os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+                'rtsp_config.json'
+            )
+            if os.path.exists(config_path):
+                with open(config_path, 'r') as f:
+                    rtsp_urls = json.load(f)
+                for cam_id, rtsp_url in rtsp_urls.items():
+                    config[cam_id] = {
+                        "rtsp_url": rtsp_url,
+                        "location": f"摄像头 {cam_id}",
+                        "enabled": True
+                    }
+                logger.info(f"从配置文件加载了 {len(config)} 个摄像头")
+        except Exception as e:
+            logger.warning(f"无法从配置文件加载摄像头: {e}")
+
+    # 使用默认配置
+    if not config:
+        config = {
+            "cam_001": {
+                "rtsp_url": "rtsp://127.0.0.1:8554/kitchen_01",
+                "location": "食堂1号后厨-A区",
+                "enabled": True
+            },
+            "cam_002": {
+                "rtsp_url": "rtsp://127.0.0.1:8554/kitchen_02",
+                "location": "食堂1号后厨-B区",
+                "enabled": True
+            },
+            "cam_003": {
+                "rtsp_url": "rtsp://127.0.0.1:8554/kitchen_03",
+                "location": "食堂1号后厨-C区",
+                "enabled": True
+            }
+        }
+        logger.info("使用默认摄像头配置")
+
+    return config
+
+
+def main():
+    """主函数 - 独立运行摄像头服务"""
+    import signal
+    import time
+
+    # 加载配置
+    camera_config = load_camera_config()
+
+    # 创建摄像头服务
+    service = CameraService()
+
+    # 添加摄像头
+    for camera_id, config in camera_config.items():
+        if config.get("enabled", True):
+            service.add_camera(
+                camera_id=camera_id,
+                rtsp_url=config.get("rtsp_url", ""),
+                location=config.get("location", "")
+            )
+
+    # 设置帧回调（推送到推理服务）
+    def frame_callback(camera_id: str, frame):
+        """帧回调 - 推送到推理服务"""
+        try:
+            from services.inference_service import get_inference_service
+            inference_service = get_inference_service()
+            location = ""
+            if camera_id in service._cameras:
+                location = service._cameras[camera_id].location
+            inference_service.submit_frame(camera_id, frame, location)
+        except Exception as e:
+            logger.debug(f"推送到推理服务失败: {e}")
+
+    service.set_frame_callback(frame_callback)
+
+    # 信号处理
+    def signal_handler(sig, frame):
+        logger.info("收到停止信号，正在关闭摄像头服务...")
+        service.stop()
+        sys.exit(0)
+
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+
+    # 启动服务
+    service.start()
+
+    logger.info("=" * 50)
+    logger.info("摄像头服务已启动")
+    logger.info(f"摄像头数量: {len(camera_config)}")
+    logger.info("=" * 50)
+    logger.info("按 Ctrl+C 停止服务...")
+
+    # 主循环
+    try:
+        while True:
+            time.sleep(1)
+            status = service.get_all_status()
+            if status["cameras"]:
+                online_count = sum(
+                    1 for c in status["cameras"].values()
+                    if c and c.get("is_online")
+                )
+                logger.debug(f"摄像头状态: {online_count}/{status['total_cameras']} 在线")
+    except KeyboardInterrupt:
+        pass
+    finally:
+        service.stop()
+
+
+if __name__ == "__main__":
+    main()
