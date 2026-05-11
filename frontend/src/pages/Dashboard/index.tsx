@@ -19,7 +19,12 @@ import {
 import ReactECharts from 'echarts-for-react'
 import request from '@/utils/request'
 import dayjs from 'dayjs'
-import type { Alert, AlertStats, CameraStatusSummary } from '@/types'
+import type {
+  Alert,
+  AlertStats,
+  CameraStatusSummary,
+  DashboardStats,
+} from '@/types'
 
 const { Title } = Typography
 
@@ -60,10 +65,23 @@ const initialCamSummary: CameraStatusSummary = {
   online_rate: '0%',
 }
 
+// 初始仪表盘统计数据
+const initialDashboardStats: DashboardStats = {
+  total_cameras: 0,
+  online_cameras: 0,
+  total_alerts: 0,
+  pending_alerts: 0,
+  critical_alerts: 0,
+  system_uptime: 0,
+}
+
 export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [alerts, setAlerts] = useState<Alert[]>([])
   const [stats, setStats] = useState<AlertStats>(initialStats)
+  const [dashboardStats, setDashboardStats] = useState<DashboardStats>(
+    initialDashboardStats,
+  )
   const [camSummary, setCamSummary] =
     useState<CameraStatusSummary>(initialCamSummary)
 
@@ -71,11 +89,13 @@ export default function Dashboard() {
   const fetchData = useCallback(async () => {
     setLoading(true)
     try {
-      const [alertRes, statsRes, camSummaryRes] = await Promise.allSettled([
-        request.get('/alerts/', { params: { page_size: 10 } }),
-        request.get('/alerts/stats'),
-        request.get('/cameras/status/summary'),
-      ])
+      const [alertRes, statsRes, camSummaryRes, dashboardStatsRes] =
+        await Promise.allSettled([
+          request.get('/alerts/', { params: { page_size: 10 } }),
+          request.get('/alerts/stats'),
+          request.get('/cameras/status/summary'),
+          request.get('/dashboard/stats'),
+        ])
 
       if (alertRes.status === 'fulfilled') {
         setAlerts(alertRes.value.data?.items || [])
@@ -93,6 +113,12 @@ export default function Dashboard() {
         setCamSummary(camSummaryRes.value.data || initialCamSummary)
       } else {
         console.error('获取摄像头摘要失败:', camSummaryRes.reason)
+      }
+
+      if (dashboardStatsRes.status === 'fulfilled') {
+        setDashboardStats(dashboardStatsRes.value.data || initialDashboardStats)
+      } else {
+        console.error('获取仪表盘统计数据失败:', dashboardStatsRes.reason)
       }
     } catch (error) {
       console.error('获取仪表盘数据失败:', error)
@@ -182,8 +208,9 @@ export default function Dashboard() {
   ]
 
   // 计算告警统计
-  const pendingAlerts = alerts.filter((a) => !a.acknowledged_at).length
-  const processedAlerts = alerts.filter((a) => a.acknowledged_at).length
+  const pendingAlerts = dashboardStats.pending_alerts
+  const processedAlerts =
+    dashboardStats.total_alerts - dashboardStats.pending_alerts
 
   return (
     <div>

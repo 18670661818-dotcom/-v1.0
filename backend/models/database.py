@@ -153,11 +153,13 @@ def init_db():
     """初始化数据库"""
     Base.metadata.create_all(bind=engine)
 
-    # 创建默认管理员账户
+    # 创建默认管理员账户和摄像头配置
     db = SessionLocal()
     try:
         from utils.auth_utils import get_password_hash
+        from config import CAMERA_CONFIG
 
+        # 创建默认管理员账户
         admin = db.query(User).filter(User.username == "admin").first()
         if not admin:
             admin = User(
@@ -170,6 +172,25 @@ def init_db():
             db.add(admin)
             db.commit()
             print("✅ 默认管理员账户已创建: admin/admin123")
+
+        # 初始化默认摄像头配置
+        for cam_id, config in CAMERA_CONFIG.items():
+            existing_cam = db.query(Camera).filter(Camera.camera_id == cam_id).first()
+            if not existing_cam:
+                camera = Camera(
+                    camera_id=cam_id,
+                    name=config.get("location", cam_id),
+                    rtsp_url=config.get("rtsp_url", ""),
+                    location=config.get("location", ""),
+                    status=CameraStatus.OFFLINE,
+                    enabled=config.get("enabled", True),
+                    company_name="系统管理",
+                    user_id=admin.id if admin else None,
+                )
+                db.add(camera)
+                print(f"✅ 摄像头已添加: {cam_id} - {config.get('location', cam_id)}")
+
+        db.commit()
     finally:
         db.close()
 

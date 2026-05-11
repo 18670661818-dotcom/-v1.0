@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
-import { Layout, Menu, Button, Avatar, Dropdown, theme } from 'antd'
+import { Layout, Menu, Button, Avatar, Dropdown, Typography } from 'antd'
 import {
   DashboardOutlined,
   VideoCameraOutlined,
@@ -15,7 +15,8 @@ import {
 } from '@ant-design/icons'
 import { useAuthStore } from '@/store/authStore'
 
-const { Header, Sider, Content } = Layout
+const { Sider, Content } = Layout
+const { Text } = Typography
 
 const menuItems = [
   { key: '/dashboard', icon: <DashboardOutlined />, label: '仪表盘' },
@@ -33,54 +34,93 @@ export default function MainLayout() {
   const { user, logout } = useAuthStore()
 
   return (
-    <Layout style={{ minHeight: '100vh' }}>
-      <Sider trigger={null} collapsible collapsed={collapsed} theme="dark">
+    <Layout style={{ minHeight: '100vh', background: '#f5f7fa' }}>
+      <Sider
+        trigger={null}
+        collapsible
+        collapsed={collapsed}
+        theme="light"
+        width={220}
+        style={{
+          borderRight: '1px solid #e8eaed',
+          background: '#fff',
+        }}
+      >
         <div
           style={{
             height: 64,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            borderBottom: '1px solid rgba(255,255,255,0.1)',
+            borderBottom: '1px solid #e8eaed',
+            padding: '0 16px',
           }}
         >
-          <span
-            style={{
-              color: '#fff',
-              fontSize: collapsed ? 14 : 18,
-              fontWeight: 'bold',
-            }}
-          >
-            {collapsed ? '后厨' : '后厨智能监测系统'}
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 8,
+                background: 'linear-gradient(135deg, #1677ff 0%, #4096ff 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <VideoCameraOutlined style={{ color: '#fff', fontSize: 16 }} />
+            </div>
+            {!collapsed && (
+              <Text strong style={{ fontSize: 16, color: '#1d2129' }}>
+                后厨智能监测
+              </Text>
+            )}
+          </div>
         </div>
         <Menu
-          theme="dark"
           mode="inline"
           selectedKeys={[location.pathname]}
           items={menuItems}
           onClick={({ key }) => navigate(key)}
+          style={{ borderRight: 'none', padding: '8px 0' }}
         />
       </Sider>
       <Layout>
-        <Header
+        <div
           style={{
+            height: 56,
             background: '#fff',
-            padding: '0 24px',
+            borderBottom: '1px solid #e8eaed',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+            padding: '0 24px',
           }}
         >
           <Button
             type="text"
             icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
             onClick={() => setCollapsed(!collapsed)}
+            style={{ color: '#4e5969' }}
           />
           <Dropdown
             menu={{
               items: [
+                {
+                  key: 'user',
+                  label: (
+                    <div style={{ padding: '4px 0' }}>
+                      <div style={{ fontWeight: 500 }}>
+                        {user?.username || '管理员'}
+                      </div>
+                      <div style={{ fontSize: 12, color: '#86909c' }}>
+                        {user?.email || 'admin@system.com'}
+                      </div>
+                    </div>
+                  ),
+                  disabled: true,
+                },
+                { type: 'divider' },
                 {
                   key: 'logout',
                   icon: <LogoutOutlined />,
@@ -99,20 +139,36 @@ export default function MainLayout() {
                 display: 'flex',
                 alignItems: 'center',
                 gap: 8,
+                padding: '4px 12px',
+                borderRadius: 8,
+                transition: 'background 0.2s',
               }}
+              onMouseEnter={(e) =>
+                (e.currentTarget.style.background = '#f2f3f5')
+              }
+              onMouseLeave={(e) =>
+                (e.currentTarget.style.background = 'transparent')
+              }
             >
-              <Avatar icon={<UserOutlined />} />
-              <span>{user?.username || '管理员'}</span>
+              <Avatar
+                size={32}
+                icon={<UserOutlined />}
+                style={{ background: '#1677ff' }}
+              />
+              <Text style={{ color: '#1d2129' }}>
+                {user?.username || '管理员'}
+              </Text>
             </div>
           </Dropdown>
-        </Header>
+        </div>
         <Content
           style={{
-            margin: 24,
-            padding: 24,
+            margin: 20,
+            padding: 20,
             background: '#fff',
-            borderRadius: 8,
+            borderRadius: 12,
             minHeight: 280,
+            boxShadow: '0 1px 2px rgba(0, 0, 0, 0.04)',
           }}
         >
           <Outlet />

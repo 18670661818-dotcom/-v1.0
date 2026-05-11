@@ -19,8 +19,8 @@ DATABASE_URL = os.getenv(
 SECRET_KEY = os.getenv("SECRET_KEY")
 if not SECRET_KEY:
     SECRET_KEY = secrets.token_urlsafe(32)
-    print("⚠️  未设置 SECRET_KEY 环境变量，使用随机生成的密钥")
-    print("   请设置 SECRET_KEY 环境变量以确保重启后 Token 仍然有效")
+    print("Warning: SECRET_KEY environment variable not set, using randomly generated key")
+    print("Please set SECRET_KEY environment variable to ensure tokens remain valid after restart")
 
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 60))  # 1小时

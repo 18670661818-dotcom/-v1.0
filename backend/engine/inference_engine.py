@@ -35,6 +35,7 @@ class BatchInferenceEngine:
         """接收一帧到缓冲区"""
         with self._lock:
             self._frame_buffers[camera_id] = (frame, time.time())
+            logger.debug(f"收到摄像头 {camera_id} 的帧，缓冲区大小: {len(self._frame_buffers)}")
 
     def inference_loop(self, alert_manager):
         """主推理循环"""
@@ -59,6 +60,8 @@ class BatchInferenceEngine:
             if len(batch_frames) == 0:
                 time.sleep(0.01)
                 continue
+            
+            logger.debug(f"处理批次: {batch_camera_ids}")
 
             try:
                 if self.model:
@@ -87,13 +90,16 @@ class BatchInferenceEngine:
                     if detections:
                         alert_manager.process_detections(cam_id, "unknown", detections)
 
-                    # 推送检测画面到流服务
+                    # 推送画面到流服务（无论是否有检测结果）
                     try:
                         from routers.stream import update_frame
-                        annotated = result.plot() if self.model and hasattr(result, 'plot') else batch_frames[i]
+                        if self.model and hasattr(result, 'plot'):
+                            annotated = result.plot()
+                        else:
+                            annotated = batch_frames[i]
                         update_frame(cam_id, annotated)
-                    except:
-                        pass
+                    except Exception as e:
+                        logger.debug(f"更新帧失败: {e}")
             except Exception as e:
                 logger.error(f"推理异常: {e}")
 

@@ -1,0 +1,60 @@
+{
+  "test_time": "20260511_133059",
+  "summary": {
+    "total": 3,
+    "success": 0,
+    "failed": 3,
+    "success_rate": "0.0%",
+    "avg_connect_time_ms": 0,
+    "avg_first_frame_time_ms": 0,
+    "resolutions": {},
+    "codecs": {},
+    "error_types": {
+      "无法获取流信息（可能是RTSP地址错误或摄像头离线）": 3
+    }
+  },
+  "details": [
+    {
+      "camera_id": "cam_002",
+      "rtsp_url": "rtsp://127.0.0.1:8554/kitchen_02",
+      "success": false,
+      "width": null,
+      "height": null,
+      "fps": null,
+      "codec": null,
+      "bitrate": null,
+      "connect_time_ms": 0,
+      "first_frame_time_ms": 0,
+      "error_message": "无法获取流信息（可能是RTSP地址错误或摄像头离线）",
+      "test_time": "2026-05-11 13:30:59"
+    },
+    {
+      "camera_id": "cam_001",
+      "rtsp_url": "rtsp://127.0.0.1:8554/kitchen_01",
+      "success": false,
+      "width": null,
+      "height": null,
+      "fps": null,
+      "codec": null,
+      "bitrate": null,
+      "connect_time_ms": 0,
+      "first_frame_time_ms": 0,
+      "error_message": "无法获取流信息（可能是RTSP地址错误或摄像头离线）",
+      "test_time": "2026-05-11 13:30:59"
+    },
+    {
+      "camera_id": "cam_003",
+      "rtsp_url": "rtsp://127.0.0.1:8554/kitchen_03",
+      "success": false,
+      "width": null,
+      "height": null,
+      "fps": null,
+      "codec": null,
+      "bitrate": null,
+      "connect_time_ms": 0,
+      "first_frame_time_ms": 0,
+      "error_message": "无法获取流信息（可能是RTSP地址错误或摄像头离线）",
+      "test_time": "2026-05-11 13:30:59"
+    }
+  ]
+}

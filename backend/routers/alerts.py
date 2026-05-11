@@ -27,10 +27,15 @@ VIOLATION_NAMES = {
     "overflow": "溢出",
     "garbage": "垃圾",
     "garbage_bin": "垃圾桶",
-    "chef_uniform": "穿工作服",
-    "chef_hat": "戴厨师帽",
     "no_chef_uniform": "未穿工作服",
     "no_chef_hat": "未戴厨师帽",
+}
+
+# 合规行为（不生成告警）
+COMPLIANT_BEHAVIORS = {
+    "chef_uniform": "穿工作服",
+    "chef_hat": "戴厨师帽",
+    "with_mask": "佩戴口罩",
 }
 
 # 告警级别映射

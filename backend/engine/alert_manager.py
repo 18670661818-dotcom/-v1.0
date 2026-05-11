@@ -8,6 +8,13 @@ from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
+# 合规行为（不生成告警）
+COMPLIANT_BEHAVIORS = {
+    "chef_uniform": "穿工作服",
+    "chef_hat": "戴厨师帽",
+    "with_mask": "佩戴口罩",
+}
+
 
 class AlertManager:
     def __init__(self):
@@ -22,6 +29,11 @@ class AlertManager:
 
         for det in detections:
             class_name = det["class_name"]
+
+            # 跳过合规行为
+            if class_name in COMPLIANT_BEHAVIORS:
+                logger.debug(f"跳过合规行为: {class_name}")
+                continue
 
             self._detection_window[camera_id][class_name].append(current_time)
             self._detection_window[camera_id][class_name] = [

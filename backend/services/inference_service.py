@@ -41,9 +41,11 @@ class InferenceService:
 
         # 初始化告警管理器
         self.alert_manager = AlertManager()
+        logger.info("告警管理器已初始化")
 
         # 初始化推理引擎
         self.engine = BatchInferenceEngine(MODEL_PATH, batch_size=BATCH_SIZE)
+        logger.info("推理引擎已初始化")
 
         # 启动推理线程
         self.inference_thread = threading.Thread(
@@ -52,11 +54,14 @@ class InferenceService:
             daemon=True,
         )
         self.inference_thread.start()
+        logger.info("推理线程已启动")
 
         # 启动摄像头管理器
         configs = camera_configs or CAMERA_CONFIG
+        logger.info(f"摄像头配置: {list(configs.keys())}")
         self.camera_manager = CameraManager(self.engine)
         self.camera_manager.start_all()
+        logger.info("摄像头管理器已启动")
 
         self.running = True
         logger.info("推理服务启动完成")

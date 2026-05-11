@@ -13,7 +13,7 @@ from models.database import get_db, Alert, Camera, User, CameraStatus, AlertLeve
 from models.schemas import DashboardStats, AlertStats, CameraStats
 from utils.auth_utils import get_current_user
 
-router = APIRouter()
+router = APIRouter(prefix="/api/dashboard", tags=["仪表盘"])
 
 
 @router.get("/stats", response_model=DashboardStats)

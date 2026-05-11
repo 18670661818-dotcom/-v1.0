@@ -58,10 +58,10 @@ class RTSPTester:
                 [self.ffmpeg_path, "-version"],
                 capture_output=True, timeout=5
             )
-            print("✅ FFmpeg 可用")
+            print("FFmpeg is available")
         except Exception as e:
-            print(f"❌ FFmpeg 不可用: {e}")
-            print("请确保FFmpeg已安装并添加到PATH")
+            print(f"FFmpeg is not available: {e}")
+            print("Please ensure FFmpeg is installed and added to PATH")
             sys.exit(1)
     
     def test_single_rtsp(

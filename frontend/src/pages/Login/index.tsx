@@ -1,7 +1,11 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Form, Input, Button, Card, message, Typography } from 'antd'
-import { UserOutlined, LockOutlined, SafetyOutlined } from '@ant-design/icons'
+import { Form, Input, Button, Typography, message } from 'antd'
+import {
+  UserOutlined,
+  LockOutlined,
+  VideoCameraOutlined,
+} from '@ant-design/icons'
 import request from '@/utils/request'
 import { useAuthStore } from '@/store/authStore'
 
@@ -32,51 +36,151 @@ export default function Login() {
       style={{
         minHeight: '100vh',
         display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        background: '#f5f7fa',
       }}
     >
-      <Card
+      {/* 左侧装饰区域 */}
+      <div
         style={{
-          width: 420,
-          borderRadius: 12,
-          boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+          flex: 1,
+          background: 'linear-gradient(135deg, #1677ff 0%, #4096ff 100%)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: 48,
         }}
       >
-        <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <SafetyOutlined style={{ fontSize: 48, color: '#667eea' }} />
-          <Title level={3} style={{ marginTop: 16 }}>
-            后厨智能监测系统
+        <div style={{ textAlign: 'center', color: '#fff' }}>
+          <div
+            style={{
+              width: 80,
+              height: 80,
+              borderRadius: 20,
+              background: 'rgba(255, 255, 255, 0.2)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 24px',
+            }}
+          >
+            <VideoCameraOutlined style={{ fontSize: 40, color: '#fff' }} />
+          </div>
+          <Title level={2} style={{ color: '#fff', margin: '0 0 8px' }}>
+            智瞳检测系统
           </Title>
-          <Text type="secondary">企业级后厨安全管控平台</Text>
+          <Text style={{ color: 'rgba(255, 255, 255, 0.85)', fontSize: 16 }}>
+            企业级后厨安全管控平台
+          </Text>
+          <div
+            style={{
+              marginTop: 48,
+              display: 'flex',
+              gap: 48,
+              color: 'rgba(255, 255, 255, 0.9)',
+            }}
+          >
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 32, fontWeight: 600 }}>AI</div>
+              <div style={{ fontSize: 13, marginTop: 4 }}>智能检测</div>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 32, fontWeight: 600 }}>24/7</div>
+              <div style={{ fontSize: 13, marginTop: 4 }}>实时监控</div>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 32, fontWeight: 600 }}>100%</div>
+              <div style={{ fontSize: 13, marginTop: 4 }}>安全合规</div>
+            </div>
+          </div>
         </div>
-        <Form onFinish={onFinish} size="large">
-          <Form.Item
-            name="username"
-            rules={[{ required: true, message: '请输入用户名' }]}
+      </div>
+
+      {/* 右侧登录表单 */}
+      <div
+        style={{
+          flex: 1,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: 48,
+        }}
+      >
+        <div style={{ width: '100%', maxWidth: 400 }}>
+          <div style={{ marginBottom: 40 }}>
+            <Title level={3} style={{ margin: '0 0 8px', color: '#1d2129' }}>
+              欢迎回来
+            </Title>
+            <Text type="secondary">请登录您的账号以继续</Text>
+          </div>
+
+          <Form
+            onFinish={onFinish}
+            layout="vertical"
+            size="large"
+            requiredMark={false}
           >
-            <Input prefix={<UserOutlined />} placeholder="用户名" />
-          </Form.Item>
-          <Form.Item
-            name="password"
-            rules={[{ required: true, message: '请输入密码' }]}
+            <Form.Item
+              name="username"
+              label="用户名"
+              rules={[{ required: true, message: '请输入用户名' }]}
+            >
+              <Input
+                prefix={<UserOutlined style={{ color: '#c9cdd4' }} />}
+                placeholder="请输入用户名"
+                style={{ borderRadius: 8 }}
+              />
+            </Form.Item>
+            <Form.Item
+              name="password"
+              label="密码"
+              rules={[{ required: true, message: '请输入密码' }]}
+            >
+              <Input.Password
+                prefix={<LockOutlined style={{ color: '#c9cdd4' }} />}
+                placeholder="请输入密码"
+                style={{ borderRadius: 8 }}
+              />
+            </Form.Item>
+            <Form.Item style={{ marginTop: 32 }}>
+              <Button
+                type="primary"
+                htmlType="submit"
+                loading={loading}
+                block
+                style={{
+                  height: 48,
+                  borderRadius: 8,
+                  fontSize: 16,
+                  fontWeight: 500,
+                }}
+              >
+                登 录
+              </Button>
+            </Form.Item>
+          </Form>
+
+          <div
+            style={{
+              marginTop: 24,
+              padding: '16px 20px',
+              background: '#f7f8fa',
+              borderRadius: 8,
+              textAlign: 'center',
+            }}
           >
-            <Input.Password prefix={<LockOutlined />} placeholder="密码" />
-          </Form.Item>
-          <Form.Item>
-            <Button type="primary" htmlType="submit" loading={loading} block>
-              登 录
-            </Button>
-          </Form.Item>
-        </Form>
-        <Text
-          type="secondary"
-          style={{ display: 'block', textAlign: 'center', fontSize: 12 }}
-        >
-          默认管理员: admin / admin123
-        </Text>
-      </Card>
+            <Text type="secondary" style={{ fontSize: 13 }}>
+              默认管理员账号
+            </Text>
+            <div style={{ marginTop: 8 }}>
+              <Text code style={{ marginRight: 16 }}>
+                admin
+              </Text>
+              <Text code>admin123</Text>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
