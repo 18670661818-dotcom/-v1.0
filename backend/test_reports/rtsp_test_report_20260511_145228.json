@@ -1,0 +1,62 @@
+{
+  "test_time": "20260511_145228",
+  "summary": {
+    "total": 3,
+    "success": 3,
+    "failed": 0,
+    "success_rate": "100.0%",
+    "avg_connect_time_ms": 1077.0,
+    "avg_first_frame_time_ms": 4438.5,
+    "resolutions": {
+      "1280x720": 3
+    },
+    "codecs": {
+      "h264": 3
+    },
+    "error_types": {}
+  },
+  "details": [
+    {
+      "camera_id": "cam_002",
+      "rtsp_url": "rtsp://127.0.0.1:8554/kitchen_02",
+      "success": true,
+      "width": 1280,
+      "height": 720,
+      "fps": 25.0,
+      "codec": "h264",
+      "bitrate": null,
+      "connect_time_ms": 1074.9,
+      "first_frame_time_ms": 1937.2,
+      "error_message": "",
+      "test_time": "2026-05-11 14:52:20"
+    },
+    {
+      "camera_id": "cam_003",
+      "rtsp_url": "rtsp://127.0.0.1:8554/kitchen_03",
+      "success": true,
+      "width": 1280,
+      "height": 720,
+      "fps": 25.0,
+      "codec": "h264",
+      "bitrate": null,
+      "connect_time_ms": 1074.9,
+      "first_frame_time_ms": 4941.9,
+      "error_message": "",
+      "test_time": "2026-05-11 14:52:20"
+    },
+    {
+      "camera_id": "cam_001",
+      "rtsp_url": "rtsp://127.0.0.1:8554/kitchen_01",
+      "success": true,
+      "width": 1280,
+      "height": 720,
+      "fps": 25.0,
+      "codec": "h264",
+      "bitrate": null,
+      "connect_time_ms": 1081.2,
+      "first_frame_time_ms": 6436.3,
+      "error_message": "",
+      "test_time": "2026-05-11 14:52:20"
+    }
+  ]
+}

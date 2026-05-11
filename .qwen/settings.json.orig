@@ -1,7 +1,23 @@
 {
   "permissions": {
     "allow": [
-      "Bash(mkdir *)"
+      "Bash(mkdir *)",
+      "Bash(dir *)",
+      "Bash(findstr *)",
+      "Bash(netstat *)",
+      "Bash(tasklist)",
+      "Bash(curl *)",
+      "Bash(python *)",
+      "Bash(move *)",
+      "Bash(start *)",
+      "Bash(timeout *)",
+      "Bash(taskkill *)",
+      "Bash(npm run *)",
+      "Bash(type *)",
+      "Bash(del *)",
+      "Bash(start_all.bat)",
+      "Bash(delete_compliant_alerts.py)"
     ]
-  }
+  },
+  "$version": 4
 }
