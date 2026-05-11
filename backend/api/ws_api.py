@@ -6,7 +6,7 @@ from typing import Optional
 import json
 
 from services.websocket_service import websocket_service
-from core.logger import get_logger
+from core.logger import get_logger, websocket_log
 
 logger = get_logger("api.websocket")
 router = APIRouter(tags=["WebSocket"])
@@ -26,6 +26,7 @@ async def websocket_endpoint(
     """
     await websocket_service.connect(websocket, user_id)
     logger.info(f"WebSocket连接: user={user_id}, camera={camera_id}")
+    websocket_log.log_connect(user_id)
 
     try:
         while True:
@@ -66,8 +67,10 @@ async def websocket_endpoint(
 
     except WebSocketDisconnect:
         logger.info(f"WebSocket断开: user={user_id}")
+        websocket_log.log_disconnect(user_id, "客户端断开连接")
     except Exception as e:
         logger.error(f"WebSocket错误: {e}")
+        websocket_log.log_error(user_id, str(e))
     finally:
         await websocket_service.disconnect(user_id)
 
@@ -85,6 +88,7 @@ async def camera_stream_endpoint(
     """
     await websocket_service.connect(websocket, f"camera_{camera_id}")
     logger.info(f"摄像头流连接: camera={camera_id}")
+    websocket_log.log_connect(f"camera_{camera_id}")
 
     try:
         # 订阅该摄像头
@@ -100,8 +104,10 @@ async def camera_stream_endpoint(
 
     except WebSocketDisconnect:
         logger.info(f"摄像头流断开: camera={camera_id}")
+        websocket_log.log_disconnect(f"camera_{camera_id}", "客户端断开连接")
     except Exception as e:
         logger.error(f"摄像头流错误: {e}")
+        websocket_log.log_error(f"camera_{camera_id}", str(e))
     finally:
         await websocket_service.disconnect(f"camera_{camera_id}")
 

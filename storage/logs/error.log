@@ -1,0 +1,16 @@
+2026-05-12 05:27:54,706 - services.inference_service - ERROR - load_model:145 - 模型加载失败: [Errno 13] Permission denied: 'C:\\Users\\Administrator\\AppData\\Roaming\\Ultralytics\\settings.yaml'
+2026-05-12 05:27:54,706 - services.inference_service - ERROR - start:264 - 模型初始化失败，推理服务无法启动
+2026-05-12 05:27:54,735 - services.inference_service - ERROR - load_model:145 - 模型加载失败: [Errno 13] Permission denied: 'C:\\Users\\Administrator\\AppData\\Roaming\\Ultralytics\\settings.yaml'
+2026-05-12 05:27:54,735 - services.inference_service - ERROR - start:264 - 模型初始化失败，推理服务无法启动
+2026-05-12 05:27:54,773 - services.inference_service - ERROR - load_model:145 - 模型加载失败: [Errno 13] Permission denied: 'C:\\Users\\Administrator\\AppData\\Roaming\\Ultralytics\\settings.yaml'
+2026-05-12 05:27:54,774 - services.inference_service - ERROR - start:264 - 模型初始化失败，推理服务无法启动
+2026-05-12 05:28:30,054 - services.inference_service - ERROR - load_model:145 - 模型加载失败: [Errno 13] Permission denied: 'C:\\Users\\Administrator\\AppData\\Roaming\\Ultralytics\\settings.yaml'
+2026-05-12 05:28:30,054 - services.inference_service - ERROR - start:264 - 模型初始化失败，推理服务无法启动
+2026-05-12 05:29:10,524 - services.inference_service - ERROR - load_model:145 - 模型加载失败: [Errno 13] Permission denied: 'C:\\Users\\Administrator\\AppData\\Roaming\\Ultralytics\\settings.yaml'
+2026-05-12 05:29:10,525 - services.inference_service - ERROR - start:264 - 模型初始化失败，推理服务无法启动
+2026-05-12 05:29:59,347 - services.inference_service - ERROR - load_model:145 - 模型加载失败: [Errno 13] Permission denied: 'C:\\Users\\Administrator\\AppData\\Roaming\\Ultralytics\\settings.yaml'
+2026-05-12 05:29:59,347 - services.inference_service - ERROR - start:264 - 模型初始化失败，推理服务无法启动
+2026-05-12 05:29:59,385 - services.inference_service - ERROR - load_model:145 - 模型加载失败: [Errno 13] Permission denied: 'C:\\Users\\Administrator\\AppData\\Roaming\\Ultralytics\\settings.yaml'
+2026-05-12 05:29:59,385 - services.inference_service - ERROR - start:264 - 模型初始化失败，推理服务无法启动
+2026-05-12 05:29:59,430 - services.inference_service - ERROR - load_model:145 - 模型加载失败: [Errno 13] Permission denied: 'C:\\Users\\Administrator\\AppData\\Roaming\\Ultralytics\\settings.yaml'
+2026-05-12 05:29:59,430 - services.inference_service - ERROR - start:264 - 模型初始化失败，推理服务无法启动

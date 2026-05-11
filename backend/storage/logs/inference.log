@@ -1,0 +1,6 @@
+2026-05-12 06:09:27 - inference - INFO - log_start:266 - [test_camera_001] 开始推理 - 模型: yolov8n.pt
+2026-05-12 06:09:27 - inference - INFO - log_detection:289 - [test_camera_001] 检测到 1 个对象: {'person': 1}
+2026-05-12 06:09:38 - inference - INFO - log_start:266 - [test_camera_001] 开始推理 - 模型: yolov8n.pt
+2026-05-12 06:09:38 - inference - INFO - log_detection:289 - [test_camera_001] 检测到 1 个对象: {'person': 1}
+2026-05-12 06:09:50 - inference - INFO - log_start:266 - [test_camera_001] 开始推理 - 模型: yolov8n.pt
+2026-05-12 06:09:50 - inference - INFO - log_detection:289 - [test_camera_001] 检测到 1 个对象: {'person': 1}

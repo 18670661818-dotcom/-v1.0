@@ -44,10 +44,10 @@ app.include_router(alert_router)
 app.include_router(websocket_router)
 
 # 兼容旧路由
-from routers import auth, cameras, alerts, rtsp_test, websocket, stream, dashboard, reports, settings as settings_router
+from routers import auth, alerts, rtsp_test, websocket, stream, dashboard, reports, settings as settings_router
+from routers import user_management, operation_log_api, config_api, monitoring_api
 
 app.include_router(auth.router)
-app.include_router(cameras.router)
 app.include_router(alerts.router)
 app.include_router(dashboard.router)
 app.include_router(reports.router)
@@ -55,6 +55,10 @@ app.include_router(settings_router.router)
 app.include_router(rtsp_test.router)
 app.include_router(websocket.router)
 app.include_router(stream.router)
+app.include_router(user_management.router)
+app.include_router(operation_log_api.router)
+app.include_router(config_api.router)
+app.include_router(monitoring_api.router)
 
 
 # 全局服务管理器

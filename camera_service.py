@@ -753,12 +753,12 @@ def load_camera_config() -> dict:
     try:
         from backend.models.database import SessionLocal, Camera
         db = SessionLocal()
-        cameras = db.query(Camera).filter(Camera.enabled == True).all()
+        cameras = db.query(Camera).filter(Camera.is_active == True).all()
         for cam in cameras:
             config[cam.camera_id] = {
                 "rtsp_url": cam.rtsp_url,
                 "location": cam.location or cam.name,
-                "enabled": cam.enabled
+                "enabled": cam.is_active
             }
         db.close()
         logger.info(f"从数据库加载了 {len(config)} 个摄像头")
@@ -766,10 +766,12 @@ def load_camera_config() -> dict:
         logger.warning(f"无法从数据库加载摄像头: {e}")
     
     # 如果数据库没有配置，尝试从JSON文件加载
-    if not config:
+    return config
+
+    if False and not config:
         try:
             import json
-            config_path = os.path.join(os.path.dirname(__file__), 'rtsp_config.json')
+            config_path = os.path.join(os.path.dirname(__file__), 'database_only_disabled.json')
             if os.path.exists(config_path):
                 with open(config_path, 'r') as f:
                     rtsp_urls = json.load(f)

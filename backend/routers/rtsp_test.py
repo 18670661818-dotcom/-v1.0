@@ -1,16 +1,15 @@
-"""RTSP测试API"""
-import json
-import os
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
-from fastapi.responses import FileResponse
-from sqlalchemy.orm import Session
+"""RTSP connectivity test API. Tests do not persist camera state."""
 from typing import Optional
-from models.database import get_db, User, Camera, CameraStatus
+
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+
+from models.database import Camera, User, get_db
+from utils.auth_utils import get_current_admin, get_current_user
 from utils.rtsp_tester import RTSPTester
-from utils.auth_utils import get_current_user, get_current_admin
 
-router = APIRouter(prefix="/api/rtsp-test", tags=["RTSP测试"])
 
+router = APIRouter(prefix="/api/rtsp-test", tags=["rtsp-test"])
 tester = RTSPTester()
 
 
@@ -20,21 +19,8 @@ def test_single(
     rtsp_url: str,
     timeout: int = 10,
     current_user: User = Depends(get_current_admin),
-    db: Session = Depends(get_db)
 ):
-    """测试单个RTSP流"""
-    result = tester.test_single_rtsp(camera_id, rtsp_url, timeout)
-    
-    # 更新数据库中的摄像头状态
-    camera = db.query(Camera).filter(Camera.camera_id == camera_id).first()
-    if camera:
-        from datetime import datetime
-        camera.status = CameraStatus.ONLINE if result.success else CameraStatus.OFFLINE
-        if result.success:
-            camera.last_heartbeat = datetime.utcnow()
-        db.commit()
-    
-    return result
+    return tester.test_single_rtsp(camera_id, rtsp_url, timeout)
 
 
 @router.post("/batch")
@@ -43,49 +29,28 @@ def test_batch(
     timeout: int = 10,
     max_workers: int = 10,
     current_user: User = Depends(get_current_admin),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
-    """批量测试数据库中已配置的摄像头"""
-    # 获取摄像头列表
-    query = db.query(Camera)
+    query = db.query(Camera).filter(Camera.is_active == True)
     if camera_ids:
         query = query.filter(Camera.camera_id.in_(camera_ids))
-    
+
     cameras = query.all()
-    
     if not cameras:
-        raise HTTPException(status_code=404, detail="没有找到摄像头")
-    
-    # 构建测试配置
-    config = {cam.camera_id: cam.rtsp_url for cam in cameras}
-    
-    # 执行测试
+        raise HTTPException(status_code=404, detail="No cameras found")
+
     results = tester.test_batch(
-        config,
+        {camera.camera_id: camera.rtsp_url for camera in cameras},
         max_workers=max_workers,
-        timeout=timeout
+        timeout=timeout,
     )
-    
-    # 生成报告
     report_path = tester.generate_report(results)
-    
-    # 更新摄像头状态
-    for result in results:
-        cam = db.query(Camera).filter(Camera.camera_id == result.camera_id).first()
-        if cam:
-            from models.database import CameraStatus
-            cam.status = CameraStatus.ONLINE if result.success else CameraStatus.OFFLINE
-            if result.success:
-                cam.last_heartbeat = result.test_time
-    
-    db.commit()
-    
     return {
         "total": len(results),
-        "success": sum(1 for r in results if r.success),
-        "failed": sum(1 for r in results if not r.success),
+        "success": sum(1 for result in results if result.success),
+        "failed": sum(1 for result in results if not result.success),
         "report_path": report_path,
-        "results": results
+        "results": results,
     }
 
 
@@ -93,25 +58,13 @@ def test_batch(
 def quick_check(
     camera_id: str,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
-    """快速检查单个摄像头是否在线"""
-    camera = db.query(Camera).filter(Camera.camera_id == camera_id).first()
+    camera = db.query(Camera).filter(Camera.camera_id == camera_id, Camera.is_active == True).first()
     if not camera:
-        raise HTTPException(status_code=404, detail="摄像头不存在")
-    
-    result = tester.test_single_rtsp(
-        camera_id, 
-        camera.rtsp_url, 
-        timeout=5,
-        capture_frame=False  # 不抓帧，更快
-    )
-    
-    # 更新状态
-    from models.database import CameraStatus
-    camera.status = CameraStatus.ONLINE if result.success else CameraStatus.OFFLINE
-    db.commit()
-    
+        raise HTTPException(status_code=404, detail="Camera not found")
+
+    result = tester.test_single_rtsp(camera_id, camera.rtsp_url, timeout=5, capture_frame=False)
     return {
         "camera_id": camera_id,
         "online": result.success,

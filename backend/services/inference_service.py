@@ -18,6 +18,8 @@ from dataclasses import dataclass, field
 from queue import Queue, Empty
 from contextlib import contextmanager
 
+from core.logger import inference_log
+
 logger = logging.getLogger(__name__)
 
 
@@ -236,10 +238,14 @@ class InferenceService:
         Returns:
             bool: 是否初始化成功
         """
-        return self.model_manager.load_model(
+        start_time = time.time()
+        success = self.model_manager.load_model(
             self.config.model_path,
             self.config.device
         )
+        duration = time.time() - start_time
+        inference_log.log_model_load(self.config.model_path, success, duration)
+        return success
 
     def submit_frame(self, camera_id: str, frame: np.ndarray, location: str = "") -> None:
         """
@@ -262,6 +268,7 @@ class InferenceService:
         # 初始化模型
         if not self.initialize():
             logger.error("模型初始化失败，推理服务无法启动")
+            inference_log.log_error("system", "模型初始化失败，推理服务无法启动")
             return
 
         self._running = True
@@ -274,6 +281,7 @@ class InferenceService:
         )
         self._inference_thread.start()
         logger.info(f"推理服务已启动，推理帧率: {self.config.inference_fps} FPS，设备: {self.config.device}")
+        inference_log.log_start("system", self.config.model_path)
 
     def stop(self) -> None:
         """停止推理服务"""
@@ -340,6 +348,7 @@ class InferenceService:
             yield
         except Exception as e:
             logger.error(f"推理异常（已隔离）: {e}")
+            inference_log.log_error("system", str(e))
             with self._stats_lock:
                 self._stats["errors"] += 1
                 self._stats["last_error"] = str(e)
@@ -386,7 +395,8 @@ class InferenceService:
                                 self._alert_service.process_detections(
                                     camera_id,
                                     locations[i],
-                                    detections
+                                    detections,
+                                    frames[i]
                                 )
 
                     # 推送帧到流服务

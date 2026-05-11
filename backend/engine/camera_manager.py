@@ -1,11 +1,11 @@
-"""
-摄像头管理器
-"""
-import time
-import threading
+"""Lightweight camera manager that loads camera sources from the database."""
 import logging
+import threading
+import time
+
 import cv2
 import numpy as np
+
 
 logger = logging.getLogger(__name__)
 
@@ -17,65 +17,52 @@ class CameraManager:
         self._running = True
 
     def start_all(self):
-        # 使用模拟摄像头（从RTSP读取）
-        from config import CAMERA_CONFIG
-        for cam_id, config in CAMERA_CONFIG.items():
-            if config.get("enabled", True):
-                t = threading.Thread(
-                    target=self._mock_worker,
-                    args=(cam_id, config.get("rtsp_url", ""), 0.1),  # 10 FPS
+        from models.database import Camera, SessionLocal
+
+        db = SessionLocal()
+        try:
+            cameras = db.query(Camera).filter(Camera.is_active == True).all()
+            for camera in cameras:
+                thread = threading.Thread(
+                    target=self._worker,
+                    args=(camera.camera_id, camera.rtsp_url, 0.1),
                     daemon=True,
                 )
-                t.start()
-                self._streams[cam_id] = {"thread": t, "config": config}
+                thread.start()
+                self._streams[camera.camera_id] = {"thread": thread}
                 time.sleep(0.1)
-        logger.info(f"已启动 {len(self._streams)} 路摄像头")
+        finally:
+            db.close()
+        logger.info("started %s camera streams from database", len(self._streams))
 
-    def _mock_worker(self, cam_id, rtsp_url, interval):
-        logger.info(f"[{cam_id}] 连接 {rtsp_url}")
-        cap = None
-        frame_count = 0
+    def _worker(self, camera_id, rtsp_url, interval):
+        cap = cv2.VideoCapture(rtsp_url) if rtsp_url else None
+        if cap and not cap.isOpened():
+            logger.warning("[%s] failed to open RTSP stream", camera_id)
 
-        if rtsp_url:
-            cap = cv2.VideoCapture(rtsp_url)
-            if not cap.isOpened():
-                logger.warning(f"[{cam_id}] 无法打开RTSP流，将使用模拟帧")
-            else:
-                logger.info(f"[{cam_id}] RTSP流已打开")
-
-        last_time = 0
+        last_time = 0.0
         while self._running:
             current = time.time()
-            if current - last_time >= interval:
-                frame = None
-                if cap and cap.isOpened():
-                    ret, frame = cap.read()
-                    if ret and frame is not None:
-                        frame = cv2.resize(frame, (640, 640))
-                        frame_count += 1
-                        if frame_count % 10 == 0:
-                            logger.debug(f"[{cam_id}] 已读取 {frame_count} 帧")
-                    else:
-                        logger.warning(f"[{cam_id}] 读取帧失败")
-                else:
-                    # 生成模拟帧
-                    frame = np.random.randint(0, 255, (640, 640, 3), dtype=np.uint8)
-                    frame_count += 1
-                    if frame_count % 10 == 0:
-                        logger.debug(f"[{cam_id}] 已生成 {frame_count} 个模拟帧")
-
-                if frame is not None:
-                    self.engine.submit_frame(cam_id, frame)
-                last_time = current
-            else:
+            if current - last_time < interval:
                 time.sleep(0.1)
+                continue
+
+            frame = None
+            if cap and cap.isOpened():
+                ok, frame = cap.read()
+                if ok and frame is not None:
+                    frame = cv2.resize(frame, (640, 640))
+            if frame is None:
+                frame = np.zeros((640, 640, 3), dtype=np.uint8)
+
+            self.engine.submit_frame(camera_id, frame)
+            last_time = current
 
         if cap:
             cap.release()
-        logger.info(f"[{cam_id}] 工作线程结束，共处理 {frame_count} 帧")
 
     def stop_all(self):
         self._running = False
-        for cam_id, info in self._streams.items():
+        for info in self._streams.values():
             info["thread"].join(timeout=3)
-        logger.info("所有摄像头已停止")
+        logger.info("camera manager stopped")

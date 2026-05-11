@@ -1,0 +1,4 @@
+2026-05-12 06:09:38 - alert - WARNING - log_alert:317 - 告警生成 | 摄像头: test_camera_001 | 类型: no_helmet | 置信度: 0.95 | ID: alert_001
+2026-05-12 06:09:38 - alert - INFO - log_confirm:325 - 告警确认 | ID: 1 | 处理人: admin
+2026-05-12 06:09:50 - alert - WARNING - log_alert:317 - 告警生成 | 摄像头: test_camera_001 | 类型: no_helmet | 置信度: 0.95 | ID: alert_001
+2026-05-12 06:09:50 - alert - INFO - log_confirm:325 - 告警确认 | ID: 1 | 处理人: admin

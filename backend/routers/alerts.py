@@ -8,6 +8,7 @@ from typing import List, Optional
 from models.database import get_db, User, Alert, AlertLevel, Camera
 from models.schemas import AlertAcknowledge
 from utils.auth_utils import get_current_user
+from core.cache_manager import cached
 import os
 
 router = APIRouter(prefix="/api/alerts", tags=["告警管理"])
@@ -139,6 +140,7 @@ def list_alerts(
 
 
 @router.get("/stats", )
+@cached(ttl=60, key_prefix="alert_stats")
 def alert_stats(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)

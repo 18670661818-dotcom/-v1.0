@@ -22,7 +22,9 @@ class Settings(BaseSettings):
     SERVER_PORT: int = 8000
 
     # ==================== 数据库配置 ====================
-    DATABASE_URL: str = "sqlite:///kitchen_ai.db"
+    DATABASE_URL: str = "sqlite:///./kitchen_ai.db"
+    APP_ENV: str = "dev"
+    DETECTION_FPS: float = 3.0
 
     # ==================== JWT认证配置 ====================
     SECRET_KEY: str = ""
@@ -65,6 +67,11 @@ class Settings(BaseSettings):
         case_sensitive = True
 
     def __init__(self, **kwargs):
+        # 处理 DEBUG 环境变量，将 'release' 视为 false
+        import os
+        debug_env = os.getenv('DEBUG', 'false')
+        if debug_env.lower() == 'release':
+            kwargs['DEBUG'] = False
         super().__init__(**kwargs)
         # 自动生成 SECRET_KEY（如果未设置）
         if not self.SECRET_KEY:

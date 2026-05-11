@@ -17,7 +17,10 @@
       "Bash(del *)",
       "Bash(start_all.bat)",
       "Bash(delete_compliant_alerts.py)",
-      "Bash(docker *)"
+      "Bash(docker *)",
+      "Bash(uvicorn *)",
+      "Bash(pip install *)",
+      "Bash(jq *)"
     ]
   },
   "$version": 4

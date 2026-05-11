@@ -1,66 +1,45 @@
-"""
-摄像头服务 - 服务层
-功能：
-1. 读取RTSP流
-2. 缓存最新帧
-3. 帧推送到推理服务
-4. 断流自动重连
-"""
-import os
-import time
-import threading
+"""Camera runtime service backed by database camera records."""
 import logging
+import signal
+import sys
+import threading
+import time
+from collections import deque
+from datetime import datetime
+from typing import Callable, Dict, Optional
+
 import cv2
 import numpy as np
-from typing import Dict, Optional, Callable
-from collections import deque
+
+from core.logger import camera_log
 
 logger = logging.getLogger(__name__)
 
 
 class FrameCache:
-    """帧缓存管理器"""
-
     def __init__(self, max_size: int = 30):
-        """
-        初始化帧缓存
-
-        Args:
-            max_size: 最大缓存帧数
-        """
         self.max_size = max_size
         self._cache: Dict[str, deque] = {}
-        self._lock = threading.Lock()
         self._latest_frame: Dict[str, np.ndarray] = {}
+        self._lock = threading.Lock()
 
     def update(self, camera_id: str, frame: np.ndarray) -> None:
-        """更新帧缓存"""
         with self._lock:
-            if camera_id not in self._cache:
-                self._cache[camera_id] = deque(maxlen=self.max_size)
-
-            self._cache[camera_id].append({
-                'frame': frame,
-                'timestamp': time.time()
-            })
+            self._cache.setdefault(camera_id, deque(maxlen=self.max_size)).append(
+                {"frame": frame, "timestamp": time.time()}
+            )
             self._latest_frame[camera_id] = frame
 
     def get_latest(self, camera_id: str) -> Optional[np.ndarray]:
-        """获取最新帧"""
         with self._lock:
             return self._latest_frame.get(camera_id)
 
     def get_frame_count(self, camera_id: str) -> int:
-        """获取缓存帧数"""
         with self._lock:
-            if camera_id in self._cache:
-                return len(self._cache[camera_id])
-            return 0
+            return len(self._cache.get(camera_id, []))
 
 
 class CameraWorker:
-    """摄像头工作线程"""
-
     def __init__(
         self,
         camera_id: str,
@@ -69,20 +48,8 @@ class CameraWorker:
         frame_cache: FrameCache,
         frame_callback: Optional[Callable] = None,
         max_reconnect_attempts: int = 10,
-        reconnect_delay: float = 3.0
+        reconnect_delay: float = 3.0,
     ):
-        """
-        初始化摄像头工作线程
-
-        Args:
-            camera_id: 摄像头ID
-            rtsp_url: RTSP流地址
-            location: 摄像头位置
-            frame_cache: 帧缓存管理器
-            frame_callback: 帧回调函数（推送到推理服务）
-            max_reconnect_attempts: 最大重连尝试次数
-            reconnect_delay: 重连延迟（秒）
-        """
         self.camera_id = camera_id
         self.rtsp_url = rtsp_url
         self.location = location
@@ -94,378 +61,228 @@ class CameraWorker:
         self._running = False
         self._thread: Optional[threading.Thread] = None
         self._cap: Optional[cv2.VideoCapture] = None
-
-        # 统计信息
         self.frame_count = 0
-        self.last_frame_time = 0
+        self.last_frame_time = 0.0
         self.fps = 0.0
-
-        # 连接状态
         self.is_online = False
         self.is_reconnecting = False
         self.reconnect_attempts = 0
-        self._last_reconnect_time = 0
+        self._last_reconnect_time = 0.0
+
+    def _update_db_status(self, status: str) -> None:
+        try:
+            from models.database import Camera, CameraStatus, SessionLocal
+
+            status_map = {
+                "online": CameraStatus.ONLINE,
+                "offline": CameraStatus.OFFLINE,
+                "error": CameraStatus.ERROR,
+                "reconnecting": CameraStatus.RECONNECTING,
+            }
+            db = SessionLocal()
+            camera = db.query(Camera).filter(Camera.camera_id == self.camera_id).first()
+            if camera:
+                now = datetime.utcnow()
+                camera.status = status_map[status]
+                camera.updated_at = now
+                if status == "online":
+                    camera.last_heartbeat = now
+                    camera.last_online_at = now
+                if status in ("offline", "error"):
+                    camera.last_offline_at = now
+                db.commit()
+            db.close()
+        except Exception as exc:
+            logger.debug("[%s] failed to update camera status: %s", self.camera_id, exc)
+
+    def _set_status(self, status: str) -> None:
+        self.is_online = status == "online"
+        self.is_reconnecting = status == "reconnecting"
+        self._update_db_status(status)
 
     def start(self) -> None:
-        """启动工作线程"""
         if self._running:
-            logger.warning(f"[{self.camera_id}] 已在运行")
             return
-
         self._running = True
-        self._thread = threading.Thread(
-            target=self._run,
-            name=f"Camera-{self.camera_id}",
-            daemon=True
-        )
+        self._thread = threading.Thread(target=self._run, name=f"Camera-{self.camera_id}", daemon=True)
         self._thread.start()
-        logger.info(f"[{self.camera_id}] 工作线程已启动")
 
     def stop(self) -> None:
-        """停止工作线程"""
         self._running = False
         if self._thread:
             self._thread.join(timeout=5)
         if self._cap:
             self._cap.release()
-        logger.info(f"[{self.camera_id}] 工作线程已停止")
+            self._cap = None
+        self._set_status("offline")
 
-    def _create_status_frame(self, status_text: str, is_error: bool = False) -> np.ndarray:
-        """
-        创建带状态文字的帧
-
-        Args:
-            status_text: 状态文字
-            is_error: 是否为错误状态（使用红色背景）
-
-        Returns:
-            带状态文字的帧
-        """
-        # 创建黑色背景
+    def _status_frame(self, text: str, error: bool = False) -> np.ndarray:
         frame = np.zeros((640, 640, 3), dtype=np.uint8)
-
-        # 根据状态选择颜色
-        if is_error:
-            bg_color = (0, 0, 180)  # 红色背景
-            text_color = (255, 255, 255)  # 白色文字
-        else:
-            bg_color = (0, 120, 0)  # 绿色背景
-            text_color = (255, 255, 255)  # 白色文字
-
-        # 绘制状态栏背景
-        cv2.rectangle(frame, (0, 0), (640, 80), bg_color, -1)
-
-        # 绘制摄像头ID
-        cv2.putText(
-            frame,
-            f"Camera: {self.camera_id}",
-            (20, 35),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.8,
-            text_color,
-            2
-        )
-
-        # 绘制状态文字
-        cv2.putText(
-            frame,
-            status_text,
-            (20, 70),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.7,
-            text_color,
-            2
-        )
-
-        # 绘制位置信息
-        cv2.putText(
-            frame,
-            f"Location: {self.location}",
-            (20, 600),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.6,
-            (150, 150, 150),
-            1
-        )
-
+        color = (0, 0, 180) if error else (0, 120, 0)
+        cv2.rectangle(frame, (0, 0), (640, 88), color, -1)
+        cv2.putText(frame, f"Camera: {self.camera_id}", (20, 36), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
+        cv2.putText(frame, text, (20, 72), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+        cv2.putText(frame, f"Location: {self.location}", (20, 604), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (150, 150, 150), 1)
         return frame
 
+    def _publish_frame(self, frame: np.ndarray) -> None:
+        self.frame_cache.update(self.camera_id, frame)
+        if self.frame_callback:
+            self.frame_callback(self.camera_id, frame)
+
     def _run(self) -> None:
-        """工作线程主循环"""
-        logger.info(f"[{self.camera_id}] 连接RTSP: {self.rtsp_url}")
-
-        # 打开RTSP流
+        logger.info("[%s] connecting RTSP: %s", self.camera_id, self.rtsp_url)
+        camera_log.log_connect(self.camera_id, self.rtsp_url)
         self._cap = cv2.VideoCapture(self.rtsp_url)
-
         if not self._cap.isOpened():
-            logger.error(f"[{self.camera_id}] 无法打开RTSP流")
-            self.is_online = False
-            # 尝试重连
-            if self._reconnect():
-                # 重连成功，继续运行
-                pass
-            else:
-                # 重连失败，使用离线帧
-                self._run_with_offline_frames()
+            self._set_status("error")
+            camera_log.log_error(self.camera_id, "无法打开RTSP流")
+            if not self._reconnect():
+                self._offline_loop()
                 return
 
-        self.is_online = True
+        self._set_status("online")
+        camera_log.log_connect(self.camera_id, self.rtsp_url)
         self.reconnect_attempts = 0
-        logger.info(f"[{self.camera_id}] RTSP流已打开")
-
         last_time = time.time()
-        frame_interval = 0.1  # 10 FPS 读取帧率
 
         while self._running:
             current_time = time.time()
-
-            # 控制读取帧率
-            if current_time - last_time < frame_interval:
+            if current_time - last_time < 0.1:
                 time.sleep(0.01)
                 continue
 
-            # 读取帧
             ret, frame = self._cap.read()
-
             if not ret or frame is None:
-                logger.warning(f"[{self.camera_id}] 读取帧失败")
-                self.is_online = False
-
-                # 生成离线提示帧
-                offline_frame = self._create_status_frame("摄像头离线 - 准备重连...", is_error=True)
-                self.frame_cache.update(self.camera_id, offline_frame)
-                if self.frame_callback:
-                    self.frame_callback(self.camera_id, offline_frame)
-
-                # 尝试重连
+                self._set_status("offline")
+                camera_log.log_disconnect(self.camera_id, "帧读取失败")
+                self._publish_frame(self._status_frame("offline - reconnecting", error=True))
                 if self._reconnect():
-                    self.is_online = True
+                    last_time = time.time()
                     continue
-                else:
-                    # 重连失败，切换到离线模式
-                    self._run_with_offline_frames()
-                    return
-
-            # 连接正常，重置重连计数
-            if self.is_reconnecting:
-                self.is_reconnecting = False
-                self.reconnect_attempts = 0
-                logger.info(f"[{self.camera_id}] 连接已恢复")
-
-            # 调整帧大小
-            frame = cv2.resize(frame, (640, 640))
-
-            # 更新缓存
-            self.frame_cache.update(self.camera_id, frame)
-
-            # 更新统计
-            self.frame_count += 1
-            self.last_frame_time = current_time
-            self.fps = 1.0 / (current_time - last_time) if current_time > last_time else 0
-
-            # 调用帧回调（推送到推理服务）
-            if self.frame_callback:
-                self.frame_callback(self.camera_id, frame)
-
-            last_time = current_time
-
-            if self.frame_count % 30 == 0:
-                logger.debug(f"[{self.camera_id}] 已处理 {self.frame_count} 帧, FPS: {self.fps:.1f}")
-
-        if self._cap:
-            self._cap.release()
-
-    def _run_with_offline_frames(self) -> None:
-        """使用离线提示帧运行"""
-        logger.info(f"[{self.camera_id}] 进入离线模式，显示离线提示")
-
-        last_time = time.time()
-        frame_interval = 1.0  # 每秒更新一次
-
-        while self._running:
-            current_time = time.time()
-
-            if current_time - last_time < frame_interval:
-                time.sleep(0.1)
-                continue
-
-            # 尝试重连
-            self.is_reconnecting = True
-            reconnecting_frame = self._create_status_frame(
-                f"摄像头离线 - 正在重连... ({self.reconnect_attempts + 1}/{self.max_reconnect_attempts})",
-                is_error=True
-            )
-            self.frame_cache.update(self.camera_id, reconnecting_frame)
-            if self.frame_callback:
-                self.frame_callback(self.camera_id, reconnecting_frame)
-
-            # 尝试重连
-            if self._reconnect():
-                # 重连成功，返回主循环
-                self._run()
+                self._offline_loop()
                 return
 
-            last_time = current_time
+            if self.is_reconnecting:
+                self.reconnect_attempts = 0
+                self._set_status("online")
+                camera_log.log_reconnect_success(self.camera_id)
 
-    def _run_with_mock_frames(self) -> None:
-        """使用模拟帧运行（当RTSP不可用时）"""
-        logger.info(f"[{self.camera_id}] 使用模拟帧模式")
-
-        self.is_online = False
-        last_time = time.time()
-        frame_interval = 0.1  # 10 FPS
-
-        while self._running:
-            current_time = time.time()
-
-            if current_time - last_time < frame_interval:
-                time.sleep(0.01)
-                continue
-
-            # 生成模拟帧（带离线提示）
-            frame = self._create_status_frame("模拟模式 - 无RTSP连接", is_error=False)
-
-            # 更新缓存
-            self.frame_cache.update(self.camera_id, frame)
-
-            # 更新统计
+            frame = cv2.resize(frame, (640, 640))
             self.frame_count += 1
             self.last_frame_time = current_time
-
-            # 调用帧回调
-            if self.frame_callback:
-                self.frame_callback(self.camera_id, frame)
-
+            self.fps = 1.0 / (current_time - last_time) if current_time > last_time else 0.0
+            self._publish_frame(frame)
             last_time = current_time
 
-            if self.frame_count % 30 == 0:
-                logger.debug(f"[{self.camera_id}] 已生成 {self.frame_count} 个模拟帧")
-
-    def _reconnect(self) -> bool:
-        """
-        重连RTSP流
-
-        Returns:
-            重连是否成功
-        """
-        current_time = time.time()
-
-        # 检查是否超过最大重连次数
-        if self.reconnect_attempts >= self.max_reconnect_attempts:
-            logger.error(f"[{self.camera_id}] 达到最大重连次数 ({self.max_reconnect_attempts})，停止重连")
-            return False
-
-        # 检查重连间隔
-        if current_time - self._last_reconnect_time < self.reconnect_delay:
-            time.sleep(self.reconnect_delay - (current_time - self._last_reconnect_time))
-
-        self.reconnect_attempts += 1
-        self._last_reconnect_time = time.time()
-        self.is_reconnecting = True
-
-        logger.info(f"[{self.camera_id}] 尝试重连 ({self.reconnect_attempts}/{self.max_reconnect_attempts})")
-
-        # 释放旧的VideoCapture
         if self._cap:
             self._cap.release()
             self._cap = None
+        self._set_status("offline")
 
-        # 等待一段时间
-        time.sleep(1)
+    def _offline_loop(self) -> None:
+        last_time = 0.0
+        while self._running:
+            current_time = time.time()
+            if current_time - last_time < 1.0:
+                time.sleep(0.1)
+                continue
+            self._set_status("reconnecting")
+            self._publish_frame(
+                self._status_frame(
+                    f"offline - reconnecting ({self.reconnect_attempts + 1}/{self.max_reconnect_attempts})",
+                    error=True,
+                )
+            )
+            if self._reconnect():
+                self._run()
+                return
+            last_time = current_time
 
-        # 尝试重新连接
-        self._cap = cv2.VideoCapture(self.rtsp_url)
-
-        if self._cap.isOpened():
-            logger.info(f"[{self.camera_id}] 重连成功")
-            self.is_online = True
-            self.is_reconnecting = False
-            self.reconnect_attempts = 0
-            return True
-        else:
-            logger.warning(f"[{self.camera_id}] 重连失败")
-            self.is_online = False
+    def _reconnect(self) -> bool:
+        if self.reconnect_attempts >= self.max_reconnect_attempts:
+            self._set_status("error")
+            camera_log.log_reconnect_failed(self.camera_id, "达到最大重连次数")
             return False
+
+        current_time = time.time()
+        wait_time = self.reconnect_delay - (current_time - self._last_reconnect_time)
+        if wait_time > 0:
+            time.sleep(wait_time)
+
+        self.reconnect_attempts += 1
+        self._last_reconnect_time = time.time()
+        self._set_status("reconnecting")
+        camera_log.log_reconnect(self.camera_id, self.reconnect_attempts, self.max_reconnect_attempts)
+
+        if self._cap:
+            self._cap.release()
+        self._cap = cv2.VideoCapture(self.rtsp_url)
+        if self._cap.isOpened():
+            self.reconnect_attempts = 0
+            self._set_status("online")
+            camera_log.log_reconnect_success(self.camera_id)
+            return True
+
+        self._set_status("error")
+        camera_log.log_reconnect_failed(self.camera_id, "无法打开RTSP流")
+        return False
 
 
 class CameraService:
-    """摄像头服务主类"""
-
     def __init__(self):
-        """初始化摄像头服务"""
         self.frame_cache = FrameCache(max_size=30)
         self._cameras: Dict[str, CameraWorker] = {}
         self._running = False
         self._frame_callback: Optional[Callable] = None
 
     def set_frame_callback(self, callback: Callable) -> None:
-        """设置帧回调函数（推送到推理服务）"""
         self._frame_callback = callback
 
     def add_camera(self, camera_id: str, rtsp_url: str, location: str = "") -> None:
-        """
-        添加摄像头
-
-        Args:
-            camera_id: 摄像头ID
-            rtsp_url: RTSP流地址
-            location: 摄像头位置
-        """
         if camera_id in self._cameras:
-            logger.warning(f"摄像头 {camera_id} 已存在")
-            return
-
-        worker = CameraWorker(
-            camera_id=camera_id,
-            rtsp_url=rtsp_url,
-            location=location,
-            frame_cache=self.frame_cache,
-            frame_callback=self._frame_callback
-        )
-
+            self.remove_camera(camera_id)
+        worker = CameraWorker(camera_id, rtsp_url, location, self.frame_cache, self._frame_callback)
         self._cameras[camera_id] = worker
-        logger.info(f"添加摄像头: {camera_id} ({location})")
+        if self._running:
+            worker.start()
 
     def remove_camera(self, camera_id: str) -> None:
-        """移除摄像头"""
         if camera_id in self._cameras:
             self._cameras[camera_id].stop()
             del self._cameras[camera_id]
-            logger.info(f"移除摄像头: {camera_id}")
+
+    def start_camera(self, camera_id: str) -> bool:
+        if camera_id not in self._cameras:
+            return False
+        self._running = True
+        self._cameras[camera_id].start()
+        return True
+
+    def stop_camera(self, camera_id: str) -> bool:
+        if camera_id not in self._cameras:
+            return False
+        self._cameras[camera_id].stop()
+        return True
 
     def start(self) -> None:
-        """启动服务"""
         if self._running:
-            logger.warning("服务已在运行")
             return
-
         self._running = True
-
-        # 启动所有摄像头
-        for camera_id, worker in self._cameras.items():
+        for worker in self._cameras.values():
             worker.start()
 
-        logger.info(f"摄像头服务已启动，共 {len(self._cameras)} 路摄像头")
-
     def stop(self) -> None:
-        """停止服务"""
         if not self._running:
             return
-
         self._running = False
-
-        # 停止所有摄像头
-        for worker in self._cameras.values():
+        for worker in list(self._cameras.values()):
             worker.stop()
 
-        logger.info("摄像头服务已停止")
-
     def get_camera_status(self, camera_id: str) -> Optional[Dict]:
-        """获取摄像头状态"""
-        if camera_id not in self._cameras:
+        worker = self._cameras.get(camera_id)
+        if not worker:
             return None
-
-        worker = self._cameras[camera_id]
         return {
             "camera_id": camera_id,
             "location": worker.location,
@@ -474,155 +291,72 @@ class CameraService:
             "cache_size": self.frame_cache.get_frame_count(camera_id),
             "is_online": worker.is_online,
             "is_reconnecting": worker.is_reconnecting,
-            "reconnect_attempts": worker.reconnect_attempts
+            "reconnect_attempts": worker.reconnect_attempts,
         }
 
     def get_all_status(self) -> Dict:
-        """获取所有摄像头状态"""
-        camera_stats = {}
-        for camera_id in self._cameras:
-            camera_stats[camera_id] = self.get_camera_status(camera_id)
-
         return {
             "running": self._running,
-            "cameras": camera_stats,
-            "total_cameras": len(self._cameras)
+            "cameras": {camera_id: self.get_camera_status(camera_id) for camera_id in self._cameras},
+            "total_cameras": len(self._cameras),
         }
 
 
-# 全局摄像头服务实例
 camera_service = CameraService()
 
 
 def load_camera_config() -> dict:
-    """从数据库或配置文件加载摄像头配置"""
-    import json
+    """Load active cameras from the database only."""
     config = {}
-
-    # 尝试从数据库加载
     try:
-        from models.database import SessionLocal, Camera
+        from models.database import Camera, SessionLocal
+
         db = SessionLocal()
-        cameras = db.query(Camera).filter(Camera.enabled == True).all()
+        cameras = db.query(Camera).filter(Camera.is_active == True).all()
         for cam in cameras:
             config[cam.camera_id] = {
                 "rtsp_url": cam.rtsp_url,
                 "location": cam.location or cam.name,
-                "enabled": cam.enabled
+                "enabled": cam.is_active,
             }
         db.close()
-        logger.info(f"从数据库加载了 {len(config)} 个摄像头")
-    except Exception as e:
-        logger.warning(f"无法从数据库加载摄像头: {e}")
-
-    # 如果数据库没有配置，尝试从JSON文件加载
-    if not config:
-        try:
-            config_path = os.path.join(
-                os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-                'rtsp_config.json'
-            )
-            if os.path.exists(config_path):
-                with open(config_path, 'r') as f:
-                    rtsp_urls = json.load(f)
-                for cam_id, rtsp_url in rtsp_urls.items():
-                    config[cam_id] = {
-                        "rtsp_url": rtsp_url,
-                        "location": f"摄像头 {cam_id}",
-                        "enabled": True
-                    }
-                logger.info(f"从配置文件加载了 {len(config)} 个摄像头")
-        except Exception as e:
-            logger.warning(f"无法从配置文件加载摄像头: {e}")
-
-    # 使用默认配置
-    if not config:
-        config = {
-            "cam_001": {
-                "rtsp_url": "rtsp://127.0.0.1:8554/kitchen_01",
-                "location": "食堂1号后厨-A区",
-                "enabled": True
-            },
-            "cam_002": {
-                "rtsp_url": "rtsp://127.0.0.1:8554/kitchen_02",
-                "location": "食堂1号后厨-B区",
-                "enabled": True
-            },
-            "cam_003": {
-                "rtsp_url": "rtsp://127.0.0.1:8554/kitchen_03",
-                "location": "食堂1号后厨-C区",
-                "enabled": True
-            }
-        }
-        logger.info("使用默认摄像头配置")
-
+        logger.info("loaded %s active cameras from database", len(config))
+    except Exception as exc:
+        logger.warning("failed to load cameras from database: %s", exc)
     return config
 
 
 def main():
-    """主函数 - 独立运行摄像头服务"""
-    import signal
-    import time
-
-    # 加载配置
     camera_config = load_camera_config()
-
-    # 创建摄像头服务
     service = CameraService()
 
-    # 添加摄像头
     for camera_id, config in camera_config.items():
         if config.get("enabled", True):
-            service.add_camera(
-                camera_id=camera_id,
-                rtsp_url=config.get("rtsp_url", ""),
-                location=config.get("location", "")
-            )
+            service.add_camera(camera_id, config.get("rtsp_url", ""), config.get("location", ""))
 
-    # 设置帧回调（推送到推理服务）
     def frame_callback(camera_id: str, frame):
-        """帧回调 - 推送到推理服务"""
         try:
             from services.inference_service import get_inference_service
+
             inference_service = get_inference_service()
-            location = ""
-            if camera_id in service._cameras:
-                location = service._cameras[camera_id].location
+            location = service._cameras[camera_id].location if camera_id in service._cameras else ""
             inference_service.submit_frame(camera_id, frame, location)
-        except Exception as e:
-            logger.debug(f"推送到推理服务失败: {e}")
+        except Exception as exc:
+            logger.debug("failed to submit frame for inference: %s", exc)
 
     service.set_frame_callback(frame_callback)
 
-    # 信号处理
     def signal_handler(sig, frame):
-        logger.info("收到停止信号，正在关闭摄像头服务...")
         service.stop()
         sys.exit(0)
 
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
-
-    # 启动服务
     service.start()
 
-    logger.info("=" * 50)
-    logger.info("摄像头服务已启动")
-    logger.info(f"摄像头数量: {len(camera_config)}")
-    logger.info("=" * 50)
-    logger.info("按 Ctrl+C 停止服务...")
-
-    # 主循环
     try:
         while True:
             time.sleep(1)
-            status = service.get_all_status()
-            if status["cameras"]:
-                online_count = sum(
-                    1 for c in status["cameras"].values()
-                    if c and c.get("is_online")
-                )
-                logger.debug(f"摄像头状态: {online_count}/{status['total_cameras']} 在线")
     except KeyboardInterrupt:
         pass
     finally:

@@ -66,6 +66,14 @@ class CameraResponse(BaseModel):
     class Config:
         from_attributes = True
 
+    @classmethod
+    def from_orm(cls, obj):
+        """从ORM对象创建响应模型"""
+        # 将is_active映射到enabled
+        if hasattr(obj, 'is_active') and not hasattr(obj, 'enabled'):
+            obj.enabled = obj.is_active
+        return super().from_orm(obj)
+
 
 # ==================== 告警相关 ====================
 class AlertResponse(BaseModel):

@@ -1,139 +1,45 @@
-"""SQLAlchemy数据库模型"""
+"""Database models and lightweight SQLite schema migration."""
 from datetime import datetime
-from sqlalchemy import (
-    create_engine, Column, Integer, String, Float,
-    DateTime, Boolean, ForeignKey, Text, Enum, Index
-)
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, relationship
 import enum
 
-from config import DATABASE_URL
-
-engine = create_engine(
-    DATABASE_URL,
-    connect_args={"check_same_thread": False} if "sqlite" in DATABASE_URL else {},
-    pool_pre_ping=True,  # 自动检测断开的连接
-    pool_recycle=3600,   # 每小时回收连接
+from sqlalchemy import (
+    Boolean,
+    Column,
+    DateTime,
+    Enum,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    create_engine,
 )
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import relationship, sessionmaker
+
+from core.config import settings
+from core.database import engine, SessionLocal, Base, get_db
+from core.logger import database_log
+
+# 从新模型文件导入
+from .user import User, UserRole
+from .camera import Camera, CameraStatus
+from .alert import Alert, AlertLevel, AlertStatus
+from .config import Config
+
+DATABASE_URL = settings.DATABASE_URL
 
 
-class UserRole(str, enum.Enum):
-    ADMIN = "admin"          # 超级管理员
-    MANAGER = "manager"      # 企业管理员
-    VIEWER = "viewer"        # 普通查看者
 
 
-class CameraStatus(str, enum.Enum):
-    ONLINE = "online"
-    OFFLINE = "offline"
-    ERROR = "error"
 
 
-class AlertLevel(str, enum.Enum):
-    CRITICAL = "critical"    # 严重违规
-    WARNING = "warning"      # 一般违规
-    INFO = "info"            # 提示
 
 
-class User(Base):
-    """企业用户表"""
-    __tablename__ = "users"
-
-    id = Column(Integer, primary_key=True, index=True)
-    username = Column(String(50), unique=True, index=True, nullable=False)
-    email = Column(String(100), unique=True, index=True, nullable=False)
-    hashed_password = Column(String(200), nullable=False)
-    company_name = Column(String(200), index=True)  # 企业名称，添加索引
-    role = Column(Enum(UserRole), default=UserRole.VIEWER, index=True)
-    is_active = Column(Boolean, default=True, index=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    last_login = Column(DateTime)
-
-    # 关联
-    cameras = relationship("Camera", back_populates="owner")
-    alerts = relationship("Alert", back_populates="owner", foreign_keys="Alert.user_id")
-
-
-class Camera(Base):
-    """摄像头配置表"""
-    __tablename__ = "cameras"
-
-    id = Column(Integer, primary_key=True, index=True)
-    camera_id = Column(String(100), unique=True, index=True, nullable=False)
-    name = Column(String(200), nullable=False)
-    rtsp_url = Column(String(500), nullable=False)
-    location = Column(String(300))
-    status = Column(Enum(CameraStatus), default=CameraStatus.OFFLINE, index=True)
-    enabled = Column(Boolean, default=True, index=True)
-
-    # 所属企业和用户
-    company_name = Column(String(200), index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), index=True)
-    owner = relationship("User", back_populates="cameras")
-
-    created_at = Column(DateTime, default=datetime.utcnow)
-    last_heartbeat = Column(DateTime)
-
-    # 关联告警
-    alerts = relationship("Alert", back_populates="camera", foreign_keys="Alert.camera_id")
-
-    # 复合索引 - 用于按用户和状态查询
-    __table_args__ = (
-        Index('idx_camera_user_status', 'user_id', 'status'),
-        Index('idx_camera_company_status', 'company_name', 'status'),
-    )
-
-
-class Alert(Base):
-    """告警记录表"""
-    __tablename__ = "alerts"
-
-    id = Column(Integer, primary_key=True, index=True)
-    alert_id = Column(String(100), unique=True, index=True)  # UUID
-    camera_id = Column(String(100), ForeignKey("cameras.camera_id"), index=True)
-    camera_name = Column(String(200))
-
-    # 违规详情
-    violation_type = Column(String(100), nullable=False, index=True)  # no_hat, smoke等
-    violation_name = Column(String(200))  # 中文名称
-    confidence = Column(Float, default=0.0)
-    level = Column(Enum(AlertLevel), default=AlertLevel.WARNING, index=True)
-
-    # 时间信息
-    detected_at = Column(DateTime, default=datetime.utcnow, index=True)
-    acknowledged_at = Column(DateTime, index=True)  # 确认时间
-    acknowledged_by = Column(Integer, ForeignKey("users.id"))
-
-    # 截图路径
-    image_path = Column(String(500))
-
-    # 关联
-    user_id = Column(Integer, ForeignKey("users.id"), index=True)
-    owner = relationship("User", back_populates="alerts", foreign_keys=[user_id])
-    camera = relationship("Camera", back_populates="alerts")
-
-    created_at = Column(DateTime, default=datetime.utcnow)
-
-    # 复合索引 - 用于常见查询场景
-    __table_args__ = (
-        # 按用户查询告警，按时间排序
-        Index('idx_alert_user_detected', 'user_id', 'detected_at'),
-        # 按摄像头查询告警
-        Index('idx_alert_camera_detected', 'camera_id', 'detected_at'),
-        # 查询未确认的告警
-        Index('idx_alert_acknowledged', 'acknowledged_at', 'level'),
-        # 按类型和级别查询
-        Index('idx_alert_type_level', 'violation_type', 'level'),
-        # 今日告警统计
-        Index('idx_alert_user_level_detected', 'user_id', 'level', 'detected_at'),
-    )
 
 
 class DetectionLog(Base):
-    """检测日志表（用于统计分析）"""
     __tablename__ = "detection_logs"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -142,73 +48,160 @@ class DetectionLog(Base):
     class_name = Column(String(100), index=True)
     count = Column(Integer, default=0)
 
-    # 复合索引 - 用于统计查询
     __table_args__ = (
-        Index('idx_detection_camera_timestamp', 'camera_id', 'timestamp'),
-        Index('idx_detection_class_timestamp', 'class_name', 'timestamp'),
+        Index("idx_detection_camera_timestamp", "camera_id", "timestamp"),
+        Index("idx_detection_class_timestamp", "class_name", "timestamp"),
     )
 
 
-def init_db():
-    """初始化数据库"""
-    Base.metadata.create_all(bind=engine)
+def _execute_ddl(conn, sql: str):
+    try:
+        conn.exec_driver_sql(sql)
+    except AttributeError:
+        conn.execute(sql)
 
-    # 创建默认管理员账户和摄像头配置
+
+def _ensure_alert_schema():
+    """Add lifecycle columns to existing SQLite alert tables."""
+    if "sqlite" not in DATABASE_URL:
+        return
+
+    required_columns = {
+        "alert_type": "VARCHAR(100)",
+        "status": "VARCHAR(20) DEFAULT 'PENDING'",
+        "video_clip_path": "VARCHAR(500)",
+        "confirmed_at": "DATETIME",
+        "resolved_at": "DATETIME",
+        "handled_by": "VARCHAR(100)",
+        "remark": "TEXT",
+        "is_false_positive": "BOOLEAN DEFAULT 0",
+        "acknowledged_at": "DATETIME",
+        "acknowledged_by": "INTEGER",
+    }
+
+    with engine.begin() as conn:
+        try:
+            rows = conn.exec_driver_sql("PRAGMA table_info(alerts)").fetchall()
+        except AttributeError:
+            rows = conn.execute("PRAGMA table_info(alerts)").fetchall()
+        existing = {row[1] for row in rows}
+        for column_name, ddl in required_columns.items():
+            if column_name not in existing:
+                _execute_ddl(conn, f"ALTER TABLE alerts ADD COLUMN {column_name} {ddl}")
+
+        _execute_ddl(conn, "UPDATE alerts SET alert_type = violation_type WHERE alert_type IS NULL")
+        _execute_ddl(conn, "UPDATE alerts SET status = 'PENDING' WHERE status IS NULL OR status = 'pending'")
+        _execute_ddl(conn, "UPDATE alerts SET status = 'CONFIRMED' WHERE status = 'confirmed'")
+        _execute_ddl(conn, "UPDATE alerts SET status = 'RESOLVED' WHERE status = 'resolved'")
+        _execute_ddl(conn, "UPDATE alerts SET status = 'FALSE_POSITIVE' WHERE status = 'false_positive'")
+        _execute_ddl(conn, "UPDATE alerts SET is_false_positive = 0 WHERE is_false_positive IS NULL")
+
+
+def _ensure_schema_updates():
+    """Add new columns to existing tables."""
+    if "sqlite" not in DATABASE_URL:
+        return
+    
+    # 更新users表
+    required_columns_users = {
+        "updated_at": "DATETIME",
+    }
+    
+    with engine.begin() as conn:
+        try:
+            rows = conn.exec_driver_sql("PRAGMA table_info(users)").fetchall()
+        except AttributeError:
+            rows = conn.execute("PRAGMA table_info(users)").fetchall()
+        existing = {row[1] for row in rows}
+        for column_name, ddl in required_columns_users.items():
+            if column_name not in existing:
+                _execute_ddl(conn, f"ALTER TABLE users ADD COLUMN {column_name} {ddl}")
+    
+    # 更新cameras表
+    required_columns_cameras = {
+        "description": "VARCHAR(500)",
+        "detection_enabled": "BOOLEAN DEFAULT 1",
+        "last_online_at": "DATETIME",
+        "last_offline_at": "DATETIME",
+        "updated_at": "DATETIME",
+    }
+    
+    with engine.begin() as conn:
+        try:
+            rows = conn.exec_driver_sql("PRAGMA table_info(cameras)").fetchall()
+        except AttributeError:
+            rows = conn.execute("PRAGMA table_info(cameras)").fetchall()
+        existing = {row[1] for row in rows}
+        for column_name, ddl in required_columns_cameras.items():
+            if column_name not in existing:
+                _execute_ddl(conn, f"ALTER TABLE cameras ADD COLUMN {column_name} {ddl}")
+    
+    # 更新alerts表
+    required_columns_alerts = {
+        "updated_at": "DATETIME",
+    }
+    
+    with engine.begin() as conn:
+        try:
+            rows = conn.exec_driver_sql("PRAGMA table_info(alerts)").fetchall()
+        except AttributeError:
+            rows = conn.execute("PRAGMA table_info(alerts)").fetchall()
+        existing = {row[1] for row in rows}
+        for column_name, ddl in required_columns_alerts.items():
+            if column_name not in existing:
+                _execute_ddl(conn, f"ALTER TABLE alerts ADD COLUMN {column_name} {ddl}")
+
+
+def init_db():
+    try:
+        database_log.info("开始初始化数据库表...")
+        Base.metadata.create_all(bind=engine)
+        database_log.info("数据库表创建完成")
+        
+        database_log.info("开始确保告警表结构完整...")
+        _ensure_alert_schema()
+        database_log.info("告警表结构检查完成")
+        
+        database_log.info("开始确保其他表结构完整...")
+        _ensure_schema_updates()
+        database_log.info("其他表结构检查完成")
+    except Exception as e:
+        database_log.error(f"数据库表创建/迁移失败: {e}")
+        raise
+
     db = SessionLocal()
     try:
         from utils.auth_utils import get_password_hash
-        from config import CAMERA_CONFIG
 
-        # 创建默认管理员账户
+        database_log.info("检查管理员账号是否存在...")
         admin = db.query(User).filter(User.username == "admin").first()
         if not admin:
+            database_log.info("创建默认管理员账号...")
             admin = User(
                 username="admin",
                 email="admin@kitchen-ai.com",
                 hashed_password=get_password_hash("admin123"),
-                company_name="系统管理",
+                company_name="Kitchen AI",
                 role=UserRole.ADMIN,
             )
             db.add(admin)
             db.commit()
-            print("✅ 默认管理员账户已创建: admin/admin123")
-
-        # 初始化默认摄像头配置
-        for cam_id, config in CAMERA_CONFIG.items():
-            existing_cam = db.query(Camera).filter(Camera.camera_id == cam_id).first()
-            if not existing_cam:
-                camera = Camera(
-                    camera_id=cam_id,
-                    name=config.get("location", cam_id),
-                    rtsp_url=config.get("rtsp_url", ""),
-                    location=config.get("location", ""),
-                    status=CameraStatus.OFFLINE,
-                    enabled=config.get("enabled", True),
-                    company_name="系统管理",
-                    user_id=admin.id if admin else None,
-                )
-                db.add(camera)
-                print(f"✅ 摄像头已添加: {cam_id} - {config.get('location', cam_id)}")
-
-        db.commit()
+            database_log.info("默认管理员账号创建成功")
+        else:
+            database_log.info("管理员账号已存在")
+    except Exception as e:
+        database_log.error(f"初始化管理员账号失败: {e}")
+        db.rollback()
+        raise
     finally:
         db.close()
 
 
-# 依赖注入：获取数据库会话
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 
 def optimize_database():
-    """数据库优化 - 重建索引和清理"""
     if "sqlite" in DATABASE_URL:
         with engine.connect() as conn:
-            conn.execute("PRAGMA optimize")
-            conn.execute("PRAGMA analysis_limit=1000")
-            conn.execute("PRAGMA cache_size=-2000")  # 2MB缓存
-            print("✅ SQLite 优化完成")
+            _execute_ddl(conn, "PRAGMA optimize")
+            _execute_ddl(conn, "PRAGMA analysis_limit=1000")
+            _execute_ddl(conn, "PRAGMA cache_size=-2000")

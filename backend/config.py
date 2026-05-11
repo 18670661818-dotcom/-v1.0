@@ -2,6 +2,7 @@
 import os
 import secrets
 from typing import Dict, Any
+from core.config import settings
 
 # ==================== 服务器配置 ====================
 SERVER_HOST = os.getenv("SERVER_HOST", "0.0.0.0")
@@ -9,31 +10,21 @@ SERVER_PORT = int(os.getenv("SERVER_PORT", 8000))
 
 # ==================== 数据库配置 ====================
 # 使用SQLite快速启动，生产环境改用PostgreSQL
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "sqlite:///kitchen_ai.db"
-)
+DATABASE_URL = settings.DATABASE_URL
 
 # ==================== JWT认证配置 ====================
 # 安全的 SECRET_KEY 生成
-SECRET_KEY = os.getenv("SECRET_KEY")
-if not SECRET_KEY:
-    SECRET_KEY = secrets.token_urlsafe(32)
-    print("Warning: SECRET_KEY environment variable not set, using randomly generated key")
-    print("Please set SECRET_KEY environment variable to ensure tokens remain valid after restart")
+SECRET_KEY = settings.SECRET_KEY
 
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 60))  # 1小时
+ALGORITHM = settings.ALGORITHM
+ACCESS_TOKEN_EXPIRE_MINUTES = settings.ACCESS_TOKEN_EXPIRE_MINUTES
 
 # ==================== CORS 配置 ====================
 # 生产环境应限制允许的来源
-ALLOWED_ORIGINS = os.getenv(
-    "ALLOWED_ORIGINS", 
-    "http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173"
-).split(",")
+ALLOWED_ORIGINS = settings.ALLOWED_ORIGINS
 
 # ==================== YOLO模型配置 ====================
-MODEL_PATH = os.getenv("MODEL_PATH", r"D:\2026\yolo-v8\runs\train\exp2\weights\epoch98.pt")
+MODEL_PATH = settings.MODEL_PATH
 CONF_THRESHOLD = float(os.getenv("CONF_THRESHOLD", 0.4))
 IOU_THRESHOLD = float(os.getenv("IOU_THRESHOLD", 0.45))
 
@@ -76,7 +67,8 @@ DEFAULT_CAMERA_CONFIG: Dict[str, Dict[str, Any]] = {
 }
 
 # 摄像头配置（可从环境变量或配置文件加载）
-CAMERA_CONFIG: Dict[str, Dict[str, Any]] = {
+CAMERA_CONFIG: Dict[str, Dict[str, Any]] = {}
+_DISABLED_CAMERA_CONFIG: Dict[str, Dict[str, Any]] = {
     "cam_001": {"rtsp_url": "rtsp://127.0.0.1:8554/kitchen_01", "location": "食堂1号-A区", "enabled": True},
     "cam_002": {"rtsp_url": "rtsp://127.0.0.1:8554/kitchen_02", "location": "食堂1号-B区", "enabled": True},
     "cam_003": {"rtsp_url": "rtsp://127.0.0.1:8554/kitchen_03", "location": "食堂1号-C区", "enabled": True},

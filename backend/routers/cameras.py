@@ -6,6 +6,7 @@ from typing import List
 from models.database import get_db, User, Camera, CameraStatus
 from models.schemas import CameraCreate, CameraUpdate, CameraResponse
 from utils.auth_utils import get_current_user, get_current_admin
+from services.camera_service import camera_service
 
 router = APIRouter(prefix="/api/cameras", tags=["摄像头管理"])
 
@@ -17,7 +18,7 @@ def list_cameras(
     db: Session = Depends(get_db)
 ):
     """获取摄像头列表（按用户所属企业过滤）"""
-    query = db.query(Camera)
+    query = db.query(Camera).filter(Camera.is_active == True)
 
     # 管理员可以看到所有摄像头，普通用户只能看自己企业的
     if current_user.role.value not in ["admin"]:
@@ -61,22 +62,24 @@ def add_camera(
     ).first()
     if existing:
         raise HTTPException(status_code=400, detail="摄像头ID已存在")
-    
+
     camera = Camera(
-        **camera_data.dict(),
+        camera_id=camera_data.camera_id,
+        name=camera_data.name,
+        rtsp_url=camera_data.rtsp_url,
+        location=camera_data.location,
+        is_active=camera_data.enabled,
         company_name=current_user.company_name,
         user_id=current_user.id,
     )
     db.add(camera)
     db.commit()
     db.refresh(camera)
-    
-    # TODO: 通知推理引擎添加新的摄像头流
-    from services.inference_service import inference_service
-    if inference_service:
-        inference_service.add_camera(camera.camera_id, camera.rtsp_url)
-    
-    return camera
+
+    # 通知摄像头服务添加新的摄像头流
+    camera_service.add_camera(camera.camera_id, camera.rtsp_url, camera.location)
+
+    return CameraResponse.from_orm(camera)
 
 
 @router.put("/{camera_id}", response_model=CameraResponse)
@@ -92,6 +95,8 @@ def update_camera(
         raise HTTPException(status_code=404, detail="摄像头不存在")
     
     update_data = camera_data.dict(exclude_unset=True)
+    if "enabled" in update_data:
+        camera.is_active = update_data.pop("enabled")
     for key, value in update_data.items():
         setattr(camera, key, value)
     
@@ -118,12 +123,11 @@ def delete_camera(
     if not camera:
         raise HTTPException(status_code=404, detail="摄像头不存在")
     
-    db.delete(camera)
+    camera.is_active = False
+    camera.status = CameraStatus.OFFLINE
     db.commit()
     
-    from services.inference_service import inference_service
-    if inference_service:
-        inference_service.remove_camera(camera_id)
+    camera_service.remove_camera(camera_id)
     
     return {"message": "摄像头已删除"}
 

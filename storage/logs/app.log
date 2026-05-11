@@ -1,0 +1,186 @@
+2026-05-12 05:27:52,573 - passlib.handlers.bcrypt - WARNING - _load_backend_mixin:622 - (trapped) error reading bcrypt version
+Traceback (most recent call last):
+  File "D:\anaconda\lib\site-packages\passlib\handlers\bcrypt.py", line 620, in _load_backend_mixin
+    version = _bcrypt.__about__.__version__
+AttributeError: module 'bcrypt' has no attribute '__about__'
+2026-05-12 05:27:53,437 - app - INFO - startup:76 - 数据库初始化完成
+2026-05-12 05:27:53,438 - services.main - INFO - initialize:100 - 正在初始化服务...
+2026-05-12 05:27:53,440 - services.main - INFO - initialize:110 - 摄像头服务已初始化
+2026-05-12 05:27:53,440 - services.inference_service - INFO - _detect_device:88 - 未检测到GPU，使用CPU
+2026-05-12 05:27:53,441 - services.main - INFO - initialize:114 - 推理服务已初始化
+2026-05-12 05:27:53,441 - services.main - INFO - initialize:118 - 告警服务已初始化
+2026-05-12 05:27:53,441 - services.main - INFO - initialize:122 - WebSocket服务已初始化
+2026-05-12 05:27:53,441 - services.main - INFO - initialize:127 - 所有服务初始化完成
+2026-05-12 05:27:53,443 - services.main - INFO - load_camera_config:32 - 从数据库加载了 3 个摄像头
+2026-05-12 05:27:53,444 - app - INFO - startup:99 - 后厨智能监测系统 v2.0.0 启动成功
+2026-05-12 05:27:53,867 - httpx - INFO - _send_single_request:1019 - HTTP Request: POST http://testserver/api/auth/login "HTTP/1.1 200 OK"
+2026-05-12 05:27:53,886 - httpx - INFO - _send_single_request:1019 - HTTP Request: GET http://testserver/api/cameras/ "HTTP/1.1 200 OK"
+2026-05-12 05:27:53,887 - services.main - INFO - stop:196 - 所有服务已停止
+2026-05-12 05:27:53,887 - app - INFO - shutdown:113 - 服务层已停止
+2026-05-12 05:27:53,887 - app - INFO - shutdown:115 - 后厨智能监测系统 正在关闭...
+2026-05-12 05:27:53,924 - app - INFO - startup:76 - 数据库初始化完成
+2026-05-12 05:27:53,925 - services.main - INFO - initialize:100 - 正在初始化服务...
+2026-05-12 05:27:53,925 - services.main - INFO - initialize:110 - 摄像头服务已初始化
+2026-05-12 05:27:53,925 - services.main - INFO - initialize:114 - 推理服务已初始化
+2026-05-12 05:27:53,925 - services.main - INFO - initialize:118 - 告警服务已初始化
+2026-05-12 05:27:53,925 - services.main - INFO - initialize:122 - WebSocket服务已初始化
+2026-05-12 05:27:53,925 - services.main - INFO - initialize:127 - 所有服务初始化完成
+2026-05-12 05:27:53,926 - services.main - INFO - load_camera_config:32 - 从数据库加载了 3 个摄像头
+2026-05-12 05:27:53,970 - app - INFO - startup:99 - 后厨智能监测系统 v2.0.0 启动成功
+2026-05-12 05:27:54,307 - httpx - INFO - _send_single_request:1019 - HTTP Request: POST http://testserver/api/auth/login "HTTP/1.1 200 OK"
+2026-05-12 05:27:54,312 - httpx - INFO - _send_single_request:1019 - HTTP Request: GET http://testserver/api/cameras/test_cam "HTTP/1.1 200 OK"
+2026-05-12 05:27:54,313 - services.main - INFO - stop:196 - 所有服务已停止
+2026-05-12 05:27:54,313 - app - INFO - shutdown:113 - 服务层已停止
+2026-05-12 05:27:54,313 - app - INFO - shutdown:115 - 后厨智能监测系统 正在关闭...
+2026-05-12 05:27:54,335 - app - INFO - startup:76 - 数据库初始化完成
+2026-05-12 05:27:54,335 - services.main - INFO - initialize:100 - 正在初始化服务...
+2026-05-12 05:27:54,335 - services.main - INFO - initialize:110 - 摄像头服务已初始化
+2026-05-12 05:27:54,335 - services.main - INFO - initialize:114 - 推理服务已初始化
+2026-05-12 05:27:54,335 - services.main - INFO - initialize:118 - 告警服务已初始化
+2026-05-12 05:27:54,335 - services.main - INFO - initialize:122 - WebSocket服务已初始化
+2026-05-12 05:27:54,335 - services.main - INFO - initialize:127 - 所有服务初始化完成
+2026-05-12 05:27:54,337 - services.main - INFO - load_camera_config:32 - 从数据库加载了 3 个摄像头
+2026-05-12 05:27:54,367 - app - INFO - startup:99 - 后厨智能监测系统 v2.0.0 启动成功
+2026-05-12 05:27:54,692 - httpx - INFO - _send_single_request:1019 - HTTP Request: POST http://testserver/api/auth/login "HTTP/1.1 200 OK"
+2026-05-12 05:27:54,698 - api.camera - INFO - create_camera:193 - Camera created: new_cam
+2026-05-12 05:27:54,699 - httpx - INFO - _send_single_request:1019 - HTTP Request: POST http://testserver/api/cameras/ "HTTP/1.1 201 Created"
+2026-05-12 05:27:54,706 - services.inference_service - ERROR - load_model:145 - 模型加载失败: [Errno 13] Permission denied: 'C:\\Users\\Administrator\\AppData\\Roaming\\Ultralytics\\settings.yaml'
+2026-05-12 05:27:54,706 - services.inference_service - ERROR - start:264 - 模型初始化失败，推理服务无法启动
+2026-05-12 05:27:54,706 - services.camera_service - INFO - _run:133 - [cam_001] connecting RTSP: rtsp://127.0.0.1:8554/kitchen_01
+2026-05-12 05:27:54,708 - services.camera_service - INFO - _run:133 - [cam_002] connecting RTSP: rtsp://127.0.0.1:8554/kitchen_02
+2026-05-12 05:27:54,710 - services.camera_service - INFO - _run:133 - [cam_003] connecting RTSP: rtsp://127.0.0.1:8554/kitchen_03
+2026-05-12 05:27:54,711 - services.camera_service - INFO - _run:133 - [new_cam] connecting RTSP: rtsp://test.com/new
+2026-05-12 05:27:54,711 - services.main - INFO - start:179 - 所有服务已启动
+2026-05-12 05:27:54,711 - app - INFO - start_services:92 - 服务层启动成功
+2026-05-12 05:27:54,735 - services.inference_service - ERROR - load_model:145 - 模型加载失败: [Errno 13] Permission denied: 'C:\\Users\\Administrator\\AppData\\Roaming\\Ultralytics\\settings.yaml'
+2026-05-12 05:27:54,735 - services.inference_service - ERROR - start:264 - 模型初始化失败，推理服务无法启动
+2026-05-12 05:27:54,736 - services.main - INFO - start:179 - 所有服务已启动
+2026-05-12 05:27:54,736 - app - INFO - start_services:92 - 服务层启动成功
+2026-05-12 05:27:54,773 - services.inference_service - ERROR - load_model:145 - 模型加载失败: [Errno 13] Permission denied: 'C:\\Users\\Administrator\\AppData\\Roaming\\Ultralytics\\settings.yaml'
+2026-05-12 05:27:54,774 - services.inference_service - ERROR - start:264 - 模型初始化失败，推理服务无法启动
+2026-05-12 05:27:54,774 - services.main - INFO - start:179 - 所有服务已启动
+2026-05-12 05:27:54,774 - app - INFO - start_services:92 - 服务层启动成功
+2026-05-12 05:28:14,953 - services.main - INFO - stop:196 - 所有服务已停止
+2026-05-12 05:28:14,953 - app - INFO - shutdown:113 - 服务层已停止
+2026-05-12 05:28:14,953 - app - INFO - shutdown:115 - 后厨智能监测系统 正在关闭...
+2026-05-12 05:28:14,970 - app - INFO - startup:76 - 数据库初始化完成
+2026-05-12 05:28:14,970 - services.main - INFO - initialize:100 - 正在初始化服务...
+2026-05-12 05:28:14,970 - services.main - INFO - initialize:110 - 摄像头服务已初始化
+2026-05-12 05:28:14,970 - services.main - INFO - initialize:114 - 推理服务已初始化
+2026-05-12 05:28:14,970 - services.main - INFO - initialize:118 - 告警服务已初始化
+2026-05-12 05:28:14,970 - services.main - INFO - initialize:122 - WebSocket服务已初始化
+2026-05-12 05:28:14,970 - services.main - INFO - initialize:127 - 所有服务初始化完成
+2026-05-12 05:28:14,972 - services.main - INFO - load_camera_config:32 - 从数据库加载了 3 个摄像头
+2026-05-12 05:28:30,009 - app - INFO - startup:99 - 后厨智能监测系统 v2.0.0 启动成功
+2026-05-12 05:28:30,054 - services.inference_service - ERROR - load_model:145 - 模型加载失败: [Errno 13] Permission denied: 'C:\\Users\\Administrator\\AppData\\Roaming\\Ultralytics\\settings.yaml'
+2026-05-12 05:28:30,054 - services.inference_service - ERROR - start:264 - 模型初始化失败，推理服务无法启动
+2026-05-12 05:28:30,055 - services.camera_service - INFO - _run:133 - [new_cam] connecting RTSP: rtsp://test.com/new
+2026-05-12 05:28:30,055 - services.camera_service - INFO - _run:133 - [cam_001] connecting RTSP: rtsp://127.0.0.1:8554/kitchen_01
+2026-05-12 05:28:30,055 - services.camera_service - INFO - _run:133 - [cam_002] connecting RTSP: rtsp://127.0.0.1:8554/kitchen_02
+2026-05-12 05:28:30,056 - services.camera_service - INFO - _run:133 - [cam_003] connecting RTSP: rtsp://127.0.0.1:8554/kitchen_03
+2026-05-12 05:28:30,056 - services.main - INFO - start:179 - 所有服务已启动
+2026-05-12 05:28:30,056 - app - INFO - start_services:92 - 服务层启动成功
+2026-05-12 05:28:30,344 - httpx - INFO - _send_single_request:1019 - HTTP Request: POST http://testserver/api/auth/login "HTTP/1.1 200 OK"
+2026-05-12 05:28:30,349 - services.camera_service - INFO - _run:133 - [test_cam] connecting RTSP: rtsp://test.com/stream
+2026-05-12 05:28:30,349 - api.camera - INFO - update_camera:217 - Camera updated: test_cam
+2026-05-12 05:28:30,350 - httpx - INFO - _send_single_request:1019 - HTTP Request: PUT http://testserver/api/cameras/test_cam "HTTP/1.1 200 OK"
+2026-05-12 05:28:55,401 - services.main - INFO - stop:196 - 所有服务已停止
+2026-05-12 05:28:55,402 - app - INFO - shutdown:113 - 服务层已停止
+2026-05-12 05:28:55,402 - app - INFO - shutdown:115 - 后厨智能监测系统 正在关闭...
+2026-05-12 05:28:55,439 - app - INFO - startup:76 - 数据库初始化完成
+2026-05-12 05:28:55,439 - services.main - INFO - initialize:100 - 正在初始化服务...
+2026-05-12 05:28:55,439 - services.main - INFO - initialize:110 - 摄像头服务已初始化
+2026-05-12 05:28:55,439 - services.main - INFO - initialize:114 - 推理服务已初始化
+2026-05-12 05:28:55,439 - services.main - INFO - initialize:118 - 告警服务已初始化
+2026-05-12 05:28:55,439 - services.main - INFO - initialize:122 - WebSocket服务已初始化
+2026-05-12 05:28:55,439 - services.main - INFO - initialize:127 - 所有服务初始化完成
+2026-05-12 05:28:55,442 - services.main - INFO - load_camera_config:32 - 从数据库加载了 3 个摄像头
+2026-05-12 05:29:10,479 - app - INFO - startup:99 - 后厨智能监测系统 v2.0.0 启动成功
+2026-05-12 05:29:10,524 - services.inference_service - ERROR - load_model:145 - 模型加载失败: [Errno 13] Permission denied: 'C:\\Users\\Administrator\\AppData\\Roaming\\Ultralytics\\settings.yaml'
+2026-05-12 05:29:10,525 - services.inference_service - ERROR - start:264 - 模型初始化失败，推理服务无法启动
+2026-05-12 05:29:10,525 - services.camera_service - INFO - _run:133 - [new_cam] connecting RTSP: rtsp://test.com/new
+2026-05-12 05:29:10,525 - services.camera_service - INFO - _run:133 - [test_cam] connecting RTSP: rtsp://test.com/stream
+2026-05-12 05:29:10,525 - services.camera_service - INFO - _run:133 - [cam_001] connecting RTSP: rtsp://127.0.0.1:8554/kitchen_01
+2026-05-12 05:29:10,525 - services.camera_service - INFO - _run:133 - [cam_002] connecting RTSP: rtsp://127.0.0.1:8554/kitchen_02
+2026-05-12 05:29:10,526 - services.camera_service - INFO - _run:133 - [cam_003] connecting RTSP: rtsp://127.0.0.1:8554/kitchen_03
+2026-05-12 05:29:10,526 - services.main - INFO - start:179 - 所有服务已启动
+2026-05-12 05:29:10,526 - app - INFO - start_services:92 - 服务层启动成功
+2026-05-12 05:29:10,792 - httpx - INFO - _send_single_request:1019 - HTTP Request: POST http://testserver/api/auth/login "HTTP/1.1 200 OK"
+2026-05-12 05:29:15,799 - api.camera - INFO - delete_camera:229 - Camera soft deleted: test_cam
+2026-05-12 05:29:15,800 - httpx - INFO - _send_single_request:1019 - HTTP Request: DELETE http://testserver/api/cameras/test_cam "HTTP/1.1 200 OK"
+2026-05-12 05:29:35,842 - services.main - INFO - stop:196 - 所有服务已停止
+2026-05-12 05:29:35,842 - app - INFO - shutdown:113 - 服务层已停止
+2026-05-12 05:29:35,842 - app - INFO - shutdown:115 - 后厨智能监测系统 正在关闭...
+2026-05-12 05:29:35,860 - app - INFO - startup:76 - 数据库初始化完成
+2026-05-12 05:29:35,860 - services.main - INFO - initialize:100 - 正在初始化服务...
+2026-05-12 05:29:35,860 - services.main - INFO - initialize:110 - 摄像头服务已初始化
+2026-05-12 05:29:35,860 - services.main - INFO - initialize:114 - 推理服务已初始化
+2026-05-12 05:29:35,860 - services.main - INFO - initialize:118 - 告警服务已初始化
+2026-05-12 05:29:35,860 - services.main - INFO - initialize:122 - WebSocket服务已初始化
+2026-05-12 05:29:35,860 - services.main - INFO - initialize:127 - 所有服务初始化完成
+2026-05-12 05:29:35,861 - services.main - INFO - load_camera_config:32 - 从数据库加载了 3 个摄像头
+2026-05-12 05:29:58,022 - app - INFO - startup:76 - 数据库初始化完成
+2026-05-12 05:29:58,023 - services.main - INFO - initialize:100 - 正在初始化服务...
+2026-05-12 05:29:58,025 - services.main - INFO - initialize:110 - 摄像头服务已初始化
+2026-05-12 05:29:58,025 - services.inference_service - INFO - _detect_device:88 - 未检测到GPU，使用CPU
+2026-05-12 05:29:58,025 - services.main - INFO - initialize:114 - 推理服务已初始化
+2026-05-12 05:29:58,025 - services.main - INFO - initialize:118 - 告警服务已初始化
+2026-05-12 05:29:58,025 - services.main - INFO - initialize:122 - WebSocket服务已初始化
+2026-05-12 05:29:58,025 - services.main - INFO - initialize:127 - 所有服务初始化完成
+2026-05-12 05:29:58,027 - services.main - INFO - load_camera_config:32 - 从数据库加载了 3 个摄像头
+2026-05-12 05:29:58,028 - app - INFO - startup:99 - 后厨智能监测系统 v2.0.0 启动成功
+2026-05-12 05:29:58,028 - passlib.handlers.bcrypt - WARNING - _load_backend_mixin:622 - (trapped) error reading bcrypt version
+Traceback (most recent call last):
+  File "D:\anaconda\lib\site-packages\passlib\handlers\bcrypt.py", line 620, in _load_backend_mixin
+    version = _bcrypt.__about__.__version__
+AttributeError: module 'bcrypt' has no attribute '__about__'
+2026-05-12 05:29:58,392 - httpx - INFO - _send_single_request:1019 - HTTP Request: POST http://testserver/api/auth/login "HTTP/1.1 200 OK"
+2026-05-12 05:29:58,409 - httpx - INFO - _send_single_request:1019 - HTTP Request: GET http://testserver/api/cameras/ "HTTP/1.1 200 OK"
+2026-05-12 05:29:58,410 - services.main - INFO - stop:196 - 所有服务已停止
+2026-05-12 05:29:58,410 - app - INFO - shutdown:113 - 服务层已停止
+2026-05-12 05:29:58,410 - app - INFO - shutdown:115 - 后厨智能监测系统 正在关闭...
+2026-05-12 05:29:58,439 - app - INFO - startup:76 - 数据库初始化完成
+2026-05-12 05:29:58,439 - services.main - INFO - initialize:100 - 正在初始化服务...
+2026-05-12 05:29:58,439 - services.main - INFO - initialize:110 - 摄像头服务已初始化
+2026-05-12 05:29:58,439 - services.main - INFO - initialize:114 - 推理服务已初始化
+2026-05-12 05:29:58,439 - services.main - INFO - initialize:118 - 告警服务已初始化
+2026-05-12 05:29:58,439 - services.main - INFO - initialize:122 - WebSocket服务已初始化
+2026-05-12 05:29:58,439 - services.main - INFO - initialize:127 - 所有服务初始化完成
+2026-05-12 05:29:58,441 - services.main - INFO - load_camera_config:32 - 从数据库加载了 3 个摄像头
+2026-05-12 05:29:58,491 - app - INFO - startup:99 - 后厨智能监测系统 v2.0.0 启动成功
+2026-05-12 05:29:58,840 - httpx - INFO - _send_single_request:1019 - HTTP Request: POST http://testserver/api/auth/login "HTTP/1.1 200 OK"
+2026-05-12 05:29:58,847 - httpx - INFO - _send_single_request:1019 - HTTP Request: GET http://testserver/api/cameras/test_cam "HTTP/1.1 200 OK"
+2026-05-12 05:29:58,848 - services.main - INFO - stop:196 - 所有服务已停止
+2026-05-12 05:29:58,848 - app - INFO - shutdown:113 - 服务层已停止
+2026-05-12 05:29:58,848 - app - INFO - shutdown:115 - 后厨智能监测系统 正在关闭...
+2026-05-12 05:29:58,871 - app - INFO - startup:76 - 数据库初始化完成
+2026-05-12 05:29:58,871 - services.main - INFO - initialize:100 - 正在初始化服务...
+2026-05-12 05:29:58,872 - services.main - INFO - initialize:110 - 摄像头服务已初始化
+2026-05-12 05:29:58,872 - services.main - INFO - initialize:114 - 推理服务已初始化
+2026-05-12 05:29:58,872 - services.main - INFO - initialize:118 - 告警服务已初始化
+2026-05-12 05:29:58,872 - services.main - INFO - initialize:122 - WebSocket服务已初始化
+2026-05-12 05:29:58,890 - services.main - INFO - initialize:127 - 所有服务初始化完成
+2026-05-12 05:29:58,892 - services.main - INFO - load_camera_config:32 - 从数据库加载了 3 个摄像头
+2026-05-12 05:29:58,959 - app - INFO - startup:99 - 后厨智能监测系统 v2.0.0 启动成功
+2026-05-12 05:29:59,304 - httpx - INFO - _send_single_request:1019 - HTTP Request: POST http://testserver/api/auth/login "HTTP/1.1 200 OK"
+2026-05-12 05:29:59,309 - api.camera - INFO - create_camera:193 - Camera created: new_cam
+2026-05-12 05:29:59,311 - httpx - INFO - _send_single_request:1019 - HTTP Request: POST http://testserver/api/cameras/ "HTTP/1.1 201 Created"
+2026-05-12 05:29:59,347 - services.inference_service - ERROR - load_model:145 - 模型加载失败: [Errno 13] Permission denied: 'C:\\Users\\Administrator\\AppData\\Roaming\\Ultralytics\\settings.yaml'
+2026-05-12 05:29:59,347 - services.inference_service - ERROR - start:264 - 模型初始化失败，推理服务无法启动
+2026-05-12 05:29:59,348 - services.camera_service - INFO - _run:133 - [cam_001] connecting RTSP: rtsp://127.0.0.1:8554/kitchen_01
+2026-05-12 05:29:59,348 - services.camera_service - INFO - _run:133 - [cam_002] connecting RTSP: rtsp://127.0.0.1:8554/kitchen_02
+2026-05-12 05:29:59,348 - services.camera_service - INFO - _run:133 - [cam_003] connecting RTSP: rtsp://127.0.0.1:8554/kitchen_03
+2026-05-12 05:29:59,351 - services.camera_service - INFO - _run:133 - [new_cam] connecting RTSP: rtsp://test.com/new
+2026-05-12 05:29:59,351 - services.main - INFO - start:179 - 所有服务已启动
+2026-05-12 05:29:59,352 - app - INFO - start_services:92 - 服务层启动成功
+2026-05-12 05:29:59,385 - services.inference_service - ERROR - load_model:145 - 模型加载失败: [Errno 13] Permission denied: 'C:\\Users\\Administrator\\AppData\\Roaming\\Ultralytics\\settings.yaml'
+2026-05-12 05:29:59,385 - services.inference_service - ERROR - start:264 - 模型初始化失败，推理服务无法启动
+2026-05-12 05:29:59,385 - services.main - INFO - start:179 - 所有服务已启动
+2026-05-12 05:29:59,385 - app - INFO - start_services:92 - 服务层启动成功
+2026-05-12 05:29:59,430 - services.inference_service - ERROR - load_model:145 - 模型加载失败: [Errno 13] Permission denied: 'C:\\Users\\Administrator\\AppData\\Roaming\\Ultralytics\\settings.yaml'
+2026-05-12 05:29:59,430 - services.inference_service - ERROR - start:264 - 模型初始化失败，推理服务无法启动
+2026-05-12 05:29:59,431 - services.main - INFO - start:179 - 所有服务已启动
+2026-05-12 05:29:59,431 - app - INFO - start_services:92 - 服务层启动成功
+2026-05-12 05:30:19,565 - services.main - INFO - stop:196 - 所有服务已停止
+2026-05-12 05:30:19,565 - app - INFO - shutdown:113 - 服务层已停止
+2026-05-12 05:30:19,565 - app - INFO - shutdown:115 - 后厨智能监测系统 正在关闭...
